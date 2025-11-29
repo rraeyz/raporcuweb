@@ -29,6 +29,9 @@ PyPDF2==3.0.1
 python-docx==1.1.0
 Pillow>=10.0.0
 markdown==3.5.1
+WeasyPrint==60.1
+markdown2==2.4.12
+pymdown-extensions==10.7
 
 # Ses işleme (FFmpeg gerektirmez)
 SpeechRecognition==3.12.0

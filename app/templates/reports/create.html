@@ -93,6 +93,9 @@
                                 <div id="audio-preview" class="mt-3 d-none">
                                     <audio controls id="audio-player" class="w-100"></audio>
                                     <div class="d-grid gap-2 mt-2">
+                                        <button type="button" class="btn btn-primary" onclick="processAudioToText()">
+                                            <i class="fas fa-magic"></i> Sesi Metne Dönüştür
+                                        </button>
                                         <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearRecording()">
                                             <i class="fas fa-trash"></i> Sil ve Yeniden Kaydet
                                         </button>
@@ -124,10 +127,31 @@
                         <div class="mb-3">
                             <label for="ai_model" class="form-label">AI Modeli</label>
                             <select class="form-select" id="ai_model" name="ai_model">
-                                <option value="openai">OpenAI GPT-4 (Önerilen)</option>
-                                <option value="anthropic">Anthropic Claude</option>
-                                <option value="google">Google Gemini</option>
+                                {% if available_models %}
+                                    {% for model in available_models %}
+                                        <option value="{{ model.id }}" {% if model.id == settings.default_ai_model %}selected{% endif %}>
+                                            {{ model.name }}{% if model.id == settings.default_ai_model %} (Önerilen){% endif %}
+                                        </option>
+                                    {% endfor %}
+                                {% else %}
+                                    <option value="">API anahtarı yapılandırılmamış</option>
+                                {% endif %}
                             </select>
+                            {% if available_models %}
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle"></i> 
+                                    {% for model in available_models %}
+                                        {% if model.id == settings.default_ai_model %}
+                                            {{ model.description }}
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="form-text text-danger">
+                                    <i class="fas fa-exclamation-triangle"></i> 
+                                    Lütfen admin panelinden en az bir AI API anahtarı ekleyin.
+                                </div>
+                            {% endif %}
                         </div>
                         
                         <div class="d-grid gap-2">

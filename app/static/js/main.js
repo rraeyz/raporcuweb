@@ -365,6 +365,62 @@ function clearRecording() {
     }
 }
 
+function processAudioToText() {
+    const audioData = document.getElementById('audio_data').value;
+    const contentTextarea = document.getElementById('content');
+    
+    if (!audioData) {
+        showToast('Ses kaydı bulunamadı!', 'error');
+        return;
+    }
+    
+    // Loading durumu göster
+    const processBtn = event.target;
+    const originalHTML = processBtn.innerHTML;
+    processBtn.disabled = true;
+    processBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> İşleniyor...';
+    
+    // AJAX ile ses dosyasını metne çevir
+    fetch('/reports/process-audio', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({ audio_data: audioData })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Mevcut içeriğe ekle veya üzerine yaz
+            if (contentTextarea.value.trim()) {
+                if (confirm('İçerik alanında zaten metin var. Ses metnini eklemek ister misiniz?')) {
+                    contentTextarea.value += '\n\n' + data.text;
+                } else {
+                    contentTextarea.value = data.text;
+                }
+            } else {
+                contentTextarea.value = data.text;
+            }
+            showToast('Ses başarıyla metne dönüştürüldü!', 'success');
+            
+            // Scroll to content area
+            contentTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            contentTextarea.focus();
+        } else {
+            showToast(data.message || 'Ses işlenirken hata oluştu', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Ses işlenirken bir hata oluştu', 'error');
+    })
+    .finally(() => {
+        processBtn.disabled = false;
+        processBtn.innerHTML = originalHTML;
+    });
+}
+
 // Export functions for use in other scripts
 window.RaporcuWeb = {
     copyToClipboard,

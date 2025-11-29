@@ -1,15 +1,9 @@
 import os
-import markdown
+import markdown2
 from datetime import datetime
 from flask import current_app
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import cm
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
-from reportlab.lib import colors
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
+from weasyprint import HTML, CSS
+from weasyprint.text.fonts import FontConfiguration
 import re
 
 class ReportGenerator:
@@ -21,10 +15,10 @@ class ReportGenerator:
             os.makedirs(self.upload_folder)
     
     def markdown_to_html(self, markdown_text):
-        """Markdown'u HTML'e çevir"""
-        html = markdown.markdown(
+        """Markdown'u HTML'e çevir - tam özellik desteği"""
+        html = markdown2.markdown(
             markdown_text,
-            extensions=['tables', 'fenced_code', 'nl2br']
+            extras=['tables', 'fenced-code-blocks', 'break-on-newline', 'cuddled-lists', 'code-friendly']
         )
         return html
     
@@ -33,87 +27,196 @@ class ReportGenerator:
         try:
             # Dosya adı oluştur
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f'report_{username}_{timestamp}.pdf'
+            filename = f'rapor_{username}_{timestamp}.pdf'
             filepath = os.path.join(self.upload_folder, filename)
             
+            # Markdown'u HTML'e çevir
+            html_content = self.markdown_to_html(content)
+            
+            # Profesyonel PDF CSS stili
+            css_style = """
+                @page {
+                    size: A4;
+                    margin: 2cm;
+                }
+                
+                body {
+                    font-family: 'DejaVu Sans', Arial, sans-serif;
+                    font-size: 11pt;
+                    line-height: 1.6;
+                    color: #1a1a1a;
+                    text-align: justify;
+                }
+                
+                h1 {
+                    font-size: 24pt;
+                    font-weight: bold;
+                    color: #1a1a1a;
+                    text-align: center;
+                    margin-top: 0;
+                    margin-bottom: 30px;
+                    page-break-after: avoid;
+                }
+                
+                h2 {
+                    font-size: 18pt;
+                    font-weight: bold;
+                    color: #2c3e50;
+                    margin-top: 20px;
+                    margin-bottom: 12px;
+                    page-break-after: avoid;
+                    border-bottom: 2px solid #3498db;
+                    padding-bottom: 5px;
+                }
+                
+                h3 {
+                    font-size: 14pt;
+                    font-weight: bold;
+                    color: #34495e;
+                    margin-top: 16px;
+                    margin-bottom: 10px;
+                    page-break-after: avoid;
+                }
+                
+                h4, h5, h6 {
+                    font-size: 12pt;
+                    font-weight: bold;
+                    color: #555;
+                    margin-top: 12px;
+                    margin-bottom: 8px;
+                    page-break-after: avoid;
+                }
+                
+                p {
+                    margin-top: 0;
+                    margin-bottom: 12px;
+                    orphans: 3;
+                    widows: 3;
+                }
+                
+                /* Tablolar */
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 15px 0;
+                    page-break-inside: avoid;
+                }
+                
+                th {
+                    background-color: #3498db;
+                    color: white;
+                    font-weight: bold;
+                    padding: 10px;
+                    text-align: left;
+                    border: 1px solid #2980b9;
+                }
+                
+                td {
+                    padding: 8px;
+                    border: 1px solid #ddd;
+                }
+                
+                tr:nth-child(even) {
+                    background-color: #f9f9f9;
+                }
+                
+                /* Listeler */
+                ul, ol {
+                    margin: 10px 0;
+                    padding-left: 25px;
+                }
+                
+                li {
+                    margin-bottom: 6px;
+                }
+                
+                /* Kod blokları */
+                pre {
+                    background-color: #f4f4f4;
+                    border: 1px solid #ddd;
+                    border-left: 4px solid #3498db;
+                    padding: 12px;
+                    margin: 15px 0;
+                    overflow-x: auto;
+                    page-break-inside: avoid;
+                    font-family: 'Courier New', monospace;
+                    font-size: 10pt;
+                    line-height: 1.4;
+                }
+                
+                code {
+                    background-color: #f4f4f4;
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                    font-family: 'Courier New', monospace;
+                    font-size: 10pt;
+                }
+                
+                /* Blockquote */
+                blockquote {
+                    border-left: 4px solid #3498db;
+                    padding-left: 15px;
+                    margin: 15px 0;
+                    color: #555;
+                    font-style: italic;
+                }
+                
+                /* LaTeX denklemler */
+                .math {
+                    font-family: 'STIX Two Math', 'Latin Modern Math', serif;
+                    font-size: 12pt;
+                    text-align: center;
+                    margin: 15px 0;
+                }
+                
+                /* Bağlantılar */
+                a {
+                    color: #3498db;
+                    text-decoration: none;
+                }
+                
+                a:hover {
+                    text-decoration: underline;
+                }
+                
+                /* Tarih bilgisi */
+                .report-meta {
+                    color: #777;
+                    font-size: 9pt;
+                    text-align: center;
+                    margin-bottom: 30px;
+                    border-bottom: 1px solid #ddd;
+                    padding-bottom: 15px;
+                }
+                
+                /* Sayfa sonları */
+                .page-break {
+                    page-break-after: always;
+                }
+            """
+            
+            # HTML template
+            date_str = datetime.now().strftime('%d.%m.%Y %H:%M')
+            html_template = f"""
+            <!DOCTYPE html>
+            <html lang="tr">
+            <head>
+                <meta charset="UTF-8">
+                <title>{title}</title>
+                <style>{css_style}</style>
+            </head>
+            <body>
+                <h1>{title}</h1>
+                <div class="report-meta">
+                    Oluşturulma Tarihi: {date_str}
+                </div>
+                {html_content}
+            </body>
+            </html>
+            """
+            
             # PDF oluştur
-            doc = SimpleDocTemplate(
-                filepath,
-                pagesize=A4,
-                rightMargin=2*cm,
-                leftMargin=2*cm,
-                topMargin=2*cm,
-                bottomMargin=2*cm
-            )
-            
-            # Stil tanımlamaları
-            styles = getSampleStyleSheet()
-            
-            # Başlık stili
-            title_style = ParagraphStyle(
-                'CustomTitle',
-                parent=styles['Heading1'],
-                fontSize=24,
-                textColor=colors.HexColor('#1a1a1a'),
-                spaceAfter=30,
-                alignment=TA_CENTER,
-                fontName='Helvetica-Bold'
-            )
-            
-            # Normal metin stili
-            normal_style = ParagraphStyle(
-                'CustomNormal',
-                parent=styles['Normal'],
-                fontSize=11,
-                leading=16,
-                alignment=TA_JUSTIFY,
-                fontName='Helvetica'
-            )
-            
-            # İçerik listesi
-            story = []
-            
-            # Başlık ekle
-            story.append(Paragraph(title, title_style))
-            story.append(Spacer(1, 0.5*cm))
-            
-            # Tarih ekle
-            date_text = f"Oluşturulma Tarihi: {datetime.now().strftime('%d.%m.%Y %H:%M')}"
-            date_style = ParagraphStyle('Date', parent=styles['Normal'], fontSize=9, textColor=colors.grey)
-            story.append(Paragraph(date_text, date_style))
-            story.append(Spacer(1, 1*cm))
-            
-            # Markdown içeriğini işle
-            lines = content.split('\n')
-            for line in lines:
-                if line.strip():
-                    # Başlık kontrolü
-                    if line.startswith('# '):
-                        text = line[2:].strip()
-                        story.append(Paragraph(text, styles['Heading1']))
-                        story.append(Spacer(1, 0.3*cm))
-                    elif line.startswith('## '):
-                        text = line[3:].strip()
-                        story.append(Paragraph(text, styles['Heading2']))
-                        story.append(Spacer(1, 0.2*cm))
-                    elif line.startswith('### '):
-                        text = line[4:].strip()
-                        story.append(Paragraph(text, styles['Heading3']))
-                        story.append(Spacer(1, 0.2*cm))
-                    elif line.startswith('- ') or line.startswith('* '):
-                        text = '• ' + line[2:].strip()
-                        story.append(Paragraph(text, normal_style))
-                    elif line.startswith('1. ') or line.startswith('2. ') or line.startswith('3. '):
-                        story.append(Paragraph(line, normal_style))
-                    else:
-                        # Normal paragraf
-                        text = line.strip()
-                        if text:
-                            story.append(Paragraph(text, normal_style))
-                            story.append(Spacer(1, 0.2*cm))
-            
-            # PDF'i oluştur
-            doc.build(story)
+            HTML(string=html_template).write_pdf(filepath)
             
             # Dosya boyutunu al
             file_size = os.path.getsize(filepath)
@@ -121,6 +224,7 @@ class ReportGenerator:
             return filepath, file_size, None
             
         except Exception as e:
+            current_app.logger.error(f'PDF oluşturma hatası: {str(e)}')
             return None, None, f'PDF oluşturma hatası: {str(e)}'
     
     def get_file_path(self, filename):

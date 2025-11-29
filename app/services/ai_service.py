@@ -30,16 +30,23 @@ class AIService:
             
             openai.api_key = api_key
             
-            system_prompt = """Sen profesyonel bir rapor yazarısın. Kullanıcının verdiği konuya göre detaylı, 
-            akademik ve profesyonel bir rapor oluştur. Rapor aşağıdaki yapıda olmalı:
+            system_prompt = """Sen profesyonel bir rapor yazarısın. SADECE rapor içeriğini üret, ekstra konuşma yapma.
             
+            ÖNEMLİ KURALLAR:
+            - "Raporunuzu oluşturuyorum", "İşte raporunuz", "Başka nasıl yardımcı olabilirim" gibi ifadeler KULLANMA
+            - Direkt rapor başlığı ile başla ve sadece rapor içeriğini yaz
+            - Referans metin verilmişse, o metnin yazım tarzını, rapor düzenini, içerik düzenini, başlıklarını(örn: başlık,amaçlar,deneyin yapılışı vs.) sırasını ve düzenini, ton ve üslubunu taklit et
+            - Markdown formatında yaz: başlıklar (#), tablolar (|), listeler (-), kalın (*), italik (_)
+            - Matematik denklemleri için LaTeX kullan: $$denklem$$ veya $inline$
+            - Kod blokları için ``` kullan
+            - Akademik, profesyonel ve detaylı ol
+            
+            RAPOR YAPISI:
             # Başlık
-            ## Giriş
-            ## Ana Bölümler
+            ## Giriş/Özet
+            ## Ana Bölümler (gerektiği kadar)
             ## Sonuç
-            ## Kaynaklar
-            
-            Markdown formatında yaz. Tablolar, listeler ve başlıkları uygun şekilde kullan."""
+            ## Kaynaklar (varsa)"""
             
             response = openai.ChatCompletion.create(
                 model="gpt-4",
@@ -68,8 +75,15 @@ class AIService:
             
             client = anthropic.Anthropic(api_key=api_key)
             
-            system_prompt = """Sen profesyonel bir rapor yazarısın. Kullanıcının verdiği konuya göre detaylı, 
-            akademik ve profesyonel bir rapor oluştur. Markdown formatında yaz."""
+            system_prompt = """Sen profesyonel bir rapor yazarısın. SADECE rapor içeriğini üret, ekstra konuşma yapma.
+            
+            ÖNEMLİ KURALLAR:
+            - "Raporunuzu oluşturuyorum", "İşte raporunuz", "Başka nasıl yardımcı olabilirim" gibi ifadeler KULLANMA
+            - Direkt rapor başlığı ile başla ve sadece rapor içeriğini yaz
+            - Referans metin verilmişse, o metnin yazım tarzını, rapor düzenini, içerik düzenini, başlıklarını(örn: başlık,amaçlar,deneyin yapılışı vs.) sırasını ve düzenini, ton ve üslubunu taklit et
+            - Markdown formatında yaz: başlıklar (#), tablolar (|), listeler (-), kalın (*), italik (_)
+            - Matematik denklemleri için LaTeX kullan: $$denklem$$ veya $inline$
+            - Akademik, profesyonel ve detaylı ol"""
             
             message = client.messages.create(
                 model="claude-3-sonnet-20240229",
@@ -98,8 +112,15 @@ class AIService:
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel('gemini-pro')
             
-            system_prompt = """Sen profesyonel bir rapor yazarısın. Kullanıcının verdiği konuya göre detaylı, 
-            akademik ve profesyonel bir rapor oluştur. Markdown formatında yaz."""
+            system_prompt = """Sen profesyonel bir rapor yazarısın. SADECE rapor içeriğini üret, ekstra konuşma yapma.
+            
+            ÖNEMLİ KURALLAR:
+            - "Raporunuzu oluşturuyorum", "İşte raporunuz", "Başka nasıl yardımcı olabilirim" gibi ifadeler KULLANMA
+            - Direkt rapor başlığı ile başla ve sadece rapor içeriğini yaz
+            - Referans metin verilmişse, o metnin yazım tarzını, rapor düzenini, içerik düzenini, başlıklarını(örn: başlık,amaçlar,deneyin yapılışı vs.) sırasını ve düzenini, ton ve üslubunu taklit et
+            - Markdown formatında yaz: başlıklar (#), tablolar (|), listeler (-), kalın (*), italik (_)
+            - Matematik denklemleri için LaTeX kullan: $$denklem$$ veya $inline$
+            - Akademik, profesyonel ve detaylı ol"""
             
             full_prompt = f"{system_prompt}\n\nBaşlık: {title}\n\n{prompt}"
             response = model.generate_content(full_prompt)

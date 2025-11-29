@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file
+from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file, jsonify
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from app import db
@@ -9,6 +9,8 @@ from app.services.ai_service import AIService
 from app.services.report_generator import ReportGenerator
 from app.services.file_processor import FileProcessor
 from app.services.audio_processor import AudioProcessor
+import base64
+import io
 from app.utils.decorators import email_verified_required, credits_required
 from datetime import datetime
 import os
@@ -36,6 +38,27 @@ def create_report():
     settings = Settings.get_settings()
     credit_cost = settings.default_report_cost
     
+    # Kullanılabilir AI modellerini kontrol et
+    available_models = []
+    if settings.openai_api_key:
+        available_models.append({
+            'id': 'openai',
+            'name': 'OpenAI GPT-4',
+            'description': 'En gelişmiş yapay zeka modeli'
+        })
+    if settings.anthropic_api_key:
+        available_models.append({
+            'id': 'anthropic',
+            'name': 'Anthropic Claude',
+            'description': 'Güvenli ve tutarlı yapay zeka'
+        })
+    if settings.google_api_key:
+        available_models.append({
+            'id': 'google',
+            'name': 'Google Gemini',
+            'description': 'Google\'ın güçlü dil modeli'
+        })
+    
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
         prompt = request.form.get('prompt', '').strip()
@@ -45,15 +68,24 @@ def create_report():
         # Validasyon
         if not title or not prompt:
             flash('Başlık ve içerik girmeniz gerekiyor.', 'danger')
-            return render_template('reports/create.html', credit_cost=credit_cost)
+            return render_template('reports/create.html', 
+                                 credit_cost=credit_cost,
+                                 settings=settings,
+                                 available_models=available_models)
         
         if len(title) < 3 or len(title) > 200:
             flash('Başlık 3-200 karakter arasında olmalı.', 'danger')
-            return render_template('reports/create.html', credit_cost=credit_cost)
+            return render_template('reports/create.html', 
+                                 credit_cost=credit_cost,
+                                 settings=settings,
+                                 available_models=available_models)
         
         if len(prompt) < 10:
             flash('İçerik en az 10 karakter olmalı.', 'danger')
-            return render_template('reports/create.html', credit_cost=credit_cost)
+            return render_template('reports/create.html', 
+                                 credit_cost=credit_cost,
+                                 settings=settings,
+                                 available_models=available_models)
         
         # Kredi kontrolü
         if current_user.credits < credit_cost:
@@ -86,15 +118,15 @@ def create_report():
                 elif error:
                     flash(f'Ses işleme hatası: {error}', 'warning')
         
-        # Referans metin varsa prompt'a ekle
+        # Referans metin ve dosya içeriğini birleştir
         full_prompt = prompt
         additional_context = []
         
         if reference_text:
-            additional_context.append(f"**Kullanıcı Referans Metni:**\n{reference_text}")
+            additional_context.append(f"**REFERANS METİN (Bu metnin yazım tarzını, ton ve üslubunu kullan):**\n{reference_text}")
         
         if file_text:
-            additional_context.append(f"**Yüklenen Dosya İçeriği:**\n{file_text}")
+            additional_context.append(f"**YÜKLENEN DOSYA İÇERİĞİ (Bu bilgileri kullan ve yazım tarzını taklit et):**\n{file_text}")
         
         if audio_text:
             additional_context.append(f"**Ses Kaydı Transkripti:**\n{audio_text}")
@@ -109,7 +141,10 @@ def create_report():
         
         if error:
             flash(f'Rapor oluşturulurken hata oluştu: {error}', 'danger')
-            return render_template('reports/create.html', credit_cost=credit_cost)
+            return render_template('reports/create.html', 
+                                 credit_cost=credit_cost,
+                                 settings=settings,
+                                 available_models=available_models)
         
         # PDF oluştur
         report_generator = ReportGenerator()
@@ -155,7 +190,10 @@ def create_report():
         flash('Rapor başarıyla oluşturuldu!', 'success')
         return redirect(url_for('reports.view_report', report_id=report.id))
     
-    return render_template('reports/create.html', credit_cost=credit_cost)
+    return render_template('reports/create.html', 
+                         credit_cost=credit_cost,
+                         settings=settings,
+                         available_models=available_models)
 
 @reports_bp.route('/view/<int:report_id>')
 @login_required
@@ -188,6 +226,53 @@ def download_report(report_id):
         as_attachment=True,
         download_name=f'{report.title}.pdf'
     )
+
+@reports_bp.route('/process-audio', methods=['POST'])
+@login_required
+def process_audio():
+    """Ses kaydını metne çevir"""
+    try:
+        data = request.get_json()
+        audio_data = data.get('audio_data')
+        
+        if not audio_data:
+            return jsonify({'success': False, 'message': 'Ses verisi bulunamadı'}), 400
+        
+        # Base64 ses verisini decode et
+        if 'base64,' in audio_data:
+            audio_data = audio_data.split('base64,')[1]
+        
+        audio_bytes = base64.b64decode(audio_data)
+        
+        # Geçici dosya oluştur
+        from werkzeug.datastructures import FileStorage
+        audio_file = FileStorage(
+            stream=io.BytesIO(audio_bytes),
+            filename='recording.webm',
+            content_type='audio/webm'
+        )
+        
+        # Ses işleyici ile metne çevir
+        audio_processor = AudioProcessor()
+        transcription = audio_processor.process_audio_file(audio_file)
+        
+        if transcription:
+            return jsonify({
+                'success': True,
+                'text': transcription
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Ses metne dönüştürülemedi. Lütfen daha net konuşmayı deneyin.'
+            }), 400
+            
+    except Exception as e:
+        print(f"Audio process error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Ses işlenirken hata oluştu: {str(e)}'
+        }), 500
 
 @reports_bp.route('/delete/<int:report_id>', methods=['POST'])
 @login_required

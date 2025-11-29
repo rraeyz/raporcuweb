@@ -20,15 +20,15 @@ class AIService:
             raise ValueError(f'Desteklenmeyen AI modeli: {self.model}')
     
     def _generate_with_openai(self, prompt, title):
-        """OpenAI ile rapor oluştur"""
+        """OpenAI ile rapor oluştur - Yeni API (openai>=1.0)"""
         try:
-            import openai
+            from openai import OpenAI
             
             api_key = current_app.config.get('OPENAI_API_KEY')
             if not api_key:
                 return None, 'OpenAI API anahtarı yapılandırılmamış.'
             
-            openai.api_key = api_key
+            client = OpenAI(api_key=api_key)
             
             system_prompt = """Sen profesyonel bir rapor yazarısın. SADECE rapor içeriğini üret, ekstra konuşma yapma.
             
@@ -48,7 +48,7 @@ class AIService:
             ## Sonuç
             ## Kaynaklar (varsa)"""
             
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model="gpt-4",
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -123,9 +123,17 @@ class AIService:
             - Akademik, profesyonel ve detaylı ol"""
             
             full_prompt = f"{system_prompt}\n\nBaşlık: {title}\n\n{prompt}"
+            
             response = model.generate_content(full_prompt)
+            
+            # Gemini safety check
+            if not response.text:
+                if hasattr(response, 'prompt_feedback'):
+                    return None, f'Gemini güvenlik filtresi: {response.prompt_feedback}'
+                return None, 'Gemini içerik üretemedi (boş yanıt)'
             
             return response.text, None
             
         except Exception as e:
+            current_app.logger.error(f'Gemini API hatası: {str(e)}')
             return None, f'Google hatası: {str(e)}'

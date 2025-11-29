@@ -2,9 +2,15 @@ import os
 import markdown2
 from datetime import datetime
 from flask import current_app
-from weasyprint import HTML, CSS
-from weasyprint.text.fonts import FontConfiguration
 import re
+
+try:
+    from weasyprint import HTML, CSS
+    from weasyprint.text.fonts import FontConfiguration
+    WEASYPRINT_AVAILABLE = True
+except ImportError as e:
+    WEASYPRINT_AVAILABLE = False
+    print(f"WeasyPrint import hatası: {e}")
 
 class ReportGenerator:
     """Rapor oluşturma ve dönüştürme servisi"""
@@ -23,7 +29,11 @@ class ReportGenerator:
         return html
     
     def generate_pdf(self, content, title, username):
-        """Markdown içeriğinden PDF oluştur"""
+        """Markdown içeriğinden PDF oluştur - WeasyPrint ile"""
+        if not WEASYPRINT_AVAILABLE:
+            current_app.logger.error("WeasyPrint kullanılamıyor!")
+            return None, None, "PDF oluşturulamadı: WeasyPrint kütüphanesi yüklenemedi. Lütfen sistem yöneticisine bildirin."
+        
         try:
             # Dosya adı oluştur
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')

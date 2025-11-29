@@ -326,44 +326,48 @@ def settings():
     settings = Settings.get_settings()
     
     if request.method == 'POST':
-        settings.site_name = request.form.get('site_name')
-        settings.site_description = request.form.get('site_description')
-        settings.theme_color = request.form.get('theme_color')
-        settings.contact_email = request.form.get('contact_email')
-        settings.support_email = request.form.get('support_email')
-        settings.phone = request.form.get('phone')
-        
-        # Shopier ayarları
-        settings.shopier_payment_url = request.form.get('shopier_payment_url')
-        
-        # Kredi ayarları
-        settings.default_report_cost = request.form.get('default_report_cost', type=int)
-        settings.welcome_bonus_credits = request.form.get('welcome_bonus_credits', type=int)
-        
-        # Özellikler (checkbox'lar için 'on' kontrolü)
-        settings.enable_registration = 'enable_registration' in request.form
-        settings.enable_email_verification = 'enable_email_verification' in request.form
-        settings.enable_password_reset = 'enable_password_reset' in request.form
-        settings.maintenance_mode = 'maintenance_mode' in request.form
-        
-        # AI ayarları
-        settings.default_ai_model = request.form.get('default_ai_model', 'openai')
-        
-        # AI API Keys
-        openai_key = request.form.get('openai_api_key', '').strip()
-        anthropic_key = request.form.get('anthropic_api_key', '').strip()
-        google_key = request.form.get('google_api_key', '').strip()
-        
-        if openai_key:
-            settings.openai_api_key = openai_key
-        if anthropic_key:
-            settings.anthropic_api_key = anthropic_key
-        if google_key:
-            settings.google_api_key = google_key
-        
-        db.session.commit()
-        flash('Ayarlar başarıyla güncellendi.', 'success')
-        return redirect(url_for('admin.settings'))
+        try:
+            settings.site_name = request.form.get('site_name')
+            settings.site_description = request.form.get('site_description')
+            settings.theme_color = request.form.get('theme_color')
+            settings.contact_email = request.form.get('contact_email')
+            settings.support_email = request.form.get('support_email')
+            settings.phone = request.form.get('phone')
+            
+            # Shopier ayarları
+            settings.shopier_payment_url = request.form.get('shopier_payment_url')
+            
+            # Kredi ayarları
+            settings.default_report_cost = request.form.get('default_report_cost', type=int)
+            settings.welcome_bonus_credits = request.form.get('welcome_bonus_credits', type=int)
+            
+            # Özellikler (checkbox'lar için 'on' kontrolü)
+            settings.enable_registration = 'enable_registration' in request.form
+            settings.enable_email_verification = 'enable_email_verification' in request.form
+            settings.enable_password_reset = 'enable_password_reset' in request.form
+            settings.maintenance_mode = 'maintenance_mode' in request.form
+            
+            # AI ayarları
+            settings.default_ai_model = request.form.get('default_ai_model', 'openai')
+            
+            # AI API Keys
+            openai_key = request.form.get('openai_api_key', '').strip()
+            anthropic_key = request.form.get('anthropic_api_key', '').strip()
+            google_key = request.form.get('google_api_key', '').strip()
+            
+            if openai_key:
+                settings.openai_api_key = openai_key
+            if anthropic_key:
+                settings.anthropic_api_key = anthropic_key
+            if google_key:
+                settings.google_api_key = google_key
+            
+            db.session.commit()
+            flash('Ayarlar başarıyla güncellendi.', 'success')
+            return redirect(url_for('admin.settings'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ayarlar kaydedilirken hata oluştu: {str(e)}', 'danger')
     
     return render_template('admin/settings.html', settings=settings)
 

@@ -157,7 +157,7 @@
                 </div>
                 
                 <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-primary btn-lg">
+                    <button type="submit" class="btn btn-primary btn-lg" id="save-btn">
                         <i class="fas fa-save"></i> Ayarları Kaydet
                     </button>
                     <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary">
@@ -168,4 +168,14 @@
         </div>
     </div>
 </div>
+
+{% block extra_js %}
+<script>
+document.getElementById('settings-form').addEventListener('submit', function(e) {
+    const btn = document.getElementById('save-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Kaydediliyor...';
+});
+</script>
+{% endblock %}
 {% endblock %}

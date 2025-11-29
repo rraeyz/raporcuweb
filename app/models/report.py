@@ -22,6 +22,8 @@ class Report(db.Model):
     # Dosya bilgileri
     file_path = db.Column(db.String(255))  # PDF dosyasının yolu
     file_size = db.Column(db.Integer)  # Dosya boyutu (bytes)
+    word_file_path = db.Column(db.String(255))  # Word dosyasının yolu
+    word_file_size = db.Column(db.Integer)  # Word dosya boyutu (bytes)
     
     # AI Model bilgisi
     ai_model = db.Column(db.String(50))  # openai, anthropic, google

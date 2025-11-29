@@ -5,26 +5,46 @@
 {% block content %}
 <div class="container my-4">
     <div class="card shadow">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center">
-            <h4 class="mb-0">
-                <i class="fas fa-file-alt"></i> {{ report.title }}
-            </h4>
-            <div>
-                {% if report.file_path %}
-                <a href="{{ url_for('reports.download_report', report_id=report.id) }}" class="btn btn-success">
-                    <i class="fas fa-download"></i> PDF İndir
-                </a>
-                {% endif %}
-                <button onclick="window.print()" class="btn btn-primary">
-                    <i class="fas fa-print"></i> Yazdır
-                </button>
-                <form method="POST" action="{{ url_for('reports.delete_report', report_id=report.id) }}" 
-                      style="display: inline;" onsubmit="return confirm('Bu raporu silmek istediğinizden emin misiniz?');">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash"></i> Sil
+        <div class="card-header bg-white">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0">
+                    <i class="fas fa-file-alt"></i> {{ report.title }}
+                </h4>
+                <div>
+                    <button onclick="window.print()" class="btn btn-primary">
+                        <i class="fas fa-print"></i> Yazdır
                     </button>
-                </form>
+                    <form method="POST" action="{{ url_for('reports.delete_report', report_id=report.id) }}" 
+                          style="display: inline;" onsubmit="return confirm('Bu raporu silmek istediğinizden emin misiniz?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> Sil
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- İndirme Butonları -->
+            <div class="d-flex gap-2 download-buttons">
+                {% if report.file_path %}
+                <a href="{{ url_for('reports.download_report', report_id=report.id) }}" class="btn btn-success flex-fill">
+                    <i class="fas fa-file-pdf"></i> PDF Olarak İndir
+                </a>
+                {% else %}
+                <button class="btn btn-secondary flex-fill" disabled>
+                    <i class="fas fa-hourglass-half"></i> PDF Hazırlanıyor...
+                </button>
+                {% endif %}
+                
+                {% if report.word_file_path %}
+                <a href="{{ url_for('reports.download_word', report_id=report.id) }}" class="btn btn-info flex-fill">
+                    <i class="fas fa-file-word"></i> Word Olarak İndir
+                </a>
+                {% else %}
+                <button class="btn btn-secondary flex-fill" disabled>
+                    <i class="fas fa-hourglass-half"></i> Word Hazırlanıyor...
+                </button>
+                {% endif %}
             </div>
         </div>
         <div class="card-body p-4">
@@ -68,8 +88,29 @@
         font-size: 1.25rem;
         font-weight: bold;
     }
+    .download-buttons {
+        padding-top: 15px;
+        border-top: 1px solid #dee2e6;
+    }
+    .download-buttons .btn {
+        font-weight: 600;
+        padding: 12px 20px;
+        transition: all 0.3s ease;
+    }
+    .download-buttons .btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .download-buttons .btn-success {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border: none;
+    }
+    .download-buttons .btn-info {
+        background: linear-gradient(135deg, #17a2b8 0%, #007bff 100%);
+        border: none;
+    }
     @media print {
-        .navbar, .card-header div, .text-center, footer {
+        .navbar, .card-header div, .download-buttons, .text-center, footer {
             display: none !important;
         }
     }

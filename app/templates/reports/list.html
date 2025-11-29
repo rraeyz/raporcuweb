@@ -43,8 +43,13 @@
                             <i class="fas fa-eye"></i> Görüntüle
                         </a>
                         {% if report.file_path %}
-                        <a href="{{ url_for('reports.download_report', report_id=report.id) }}" class="btn btn-success btn-sm">
-                            <i class="fas fa-download"></i>
+                        <a href="{{ url_for('reports.download_report', report_id=report.id) }}" class="btn btn-success btn-sm" title="PDF İndir">
+                            <i class="fas fa-file-pdf"></i>
+                        </a>
+                        {% endif %}
+                        {% if report.word_file_path %}
+                        <a href="{{ url_for('reports.download_word', report_id=report.id) }}" class="btn btn-info btn-sm" title="Word İndir">
+                            <i class="fas fa-file-word"></i>
                         </a>
                         {% endif %}
                         {% endif %}

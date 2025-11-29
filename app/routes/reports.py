@@ -36,15 +36,22 @@ def generate_report_async(app, report_id, full_prompt, title, ai_model, username
                 db.session.commit()
                 return
             
-            # PDF oluştur
+            # PDF ve Word oluştur
             report_generator = ReportGenerator()
-            file_path, file_size, pdf_error = report_generator.generate_pdf(content, title, username)
+            
+            # PDF oluştur
+            pdf_path, pdf_size, pdf_error = report_generator.generate_pdf(content, title, username)
+            
+            # Word oluştur
+            word_path, word_size, word_error = report_generator.generate_word(content, title, username)
             
             # Raporu güncelle
             report.content = content
             report.status = 'completed'
-            report.file_path = file_path
-            report.file_size = file_size
+            report.file_path = pdf_path
+            report.file_size = pdf_size
+            report.word_file_path = word_path
+            report.word_file_size = word_size
             
             db.session.commit()
             
@@ -240,7 +247,7 @@ def view_report(report_id):
 @reports_bp.route('/download/<int:report_id>')
 @login_required
 def download_report(report_id):
-    """Raporu indir"""
+    """PDF olarak raporu indir"""
     report = Report.query.get_or_404(report_id)
     
     # Yetki kontrolü
@@ -248,13 +255,33 @@ def download_report(report_id):
         abort(403)
     
     if not report.file_path or not os.path.exists(report.file_path):
-        flash('Rapor dosyası bulunamadı.', 'danger')
+        flash('PDF dosyası bulunamadı.', 'danger')
         return redirect(url_for('reports.view_report', report_id=report.id))
     
     return send_file(
         report.file_path,
         as_attachment=True,
         download_name=f'{report.title}.pdf'
+    )
+
+@reports_bp.route('/download-word/<int:report_id>')
+@login_required
+def download_word(report_id):
+    """Word olarak raporu indir"""
+    report = Report.query.get_or_404(report_id)
+    
+    # Yetki kontrolü
+    if report.user_id != current_user.id and not current_user.is_admin:
+        abort(403)
+    
+    if not report.word_file_path or not os.path.exists(report.word_file_path):
+        flash('Word dosyası bulunamadı.', 'danger')
+        return redirect(url_for('reports.view_report', report_id=report.id))
+    
+    return send_file(
+        report.word_file_path,
+        as_attachment=True,
+        download_name=f'{report.title}.docx'
     )
 
 @reports_bp.route('/process-audio', methods=['POST'])

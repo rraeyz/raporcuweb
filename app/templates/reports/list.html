@@ -15,15 +15,30 @@
     <div class="row g-4">
         {% for report in reports.items %}
         <div class="col-md-6 col-lg-4">
-            <div class="card h-100 shadow-sm hover-shadow">
+            <div class="card h-100 shadow-sm hover-shadow {% if report.status == 'processing' %}report-processing{% endif %}" data-report-id="{{ report.id }}" data-status="{{ report.status }}">
                 <div class="card-body">
-                    <h5 class="card-title">{{ report.title }}</h5>
+                    <h5 class="card-title">
+                        {{ report.title }}
+                        {% if report.status == 'processing' %}
+                        <span class="spinner-border spinner-border-sm text-primary ms-2" role="status"></span>
+                        {% endif %}
+                    </h5>
                     <p class="card-text text-muted small">
                         <i class="fas fa-calendar"></i> {{ report.created_at|datetime }}<br>
                         <i class="fas fa-robot"></i> {{ report.ai_model or 'AI' }}<br>
                         <i class="fas fa-coins"></i> {{ report.credits_used }} kredi
+                        {% if report.status == 'processing' %}
+                        <br><span class="badge bg-warning text-dark"><i class="fas fa-sync-alt fa-spin"></i> Oluşturuluyor...</span>
+                        {% elif report.status == 'failed' %}
+                        <br><span class="badge bg-danger"><i class="fas fa-exclamation-circle"></i> Hata</span>
+                        {% endif %}
                     </p>
                     <div class="d-flex gap-2">
+                        {% if report.status == 'processing' %}
+                        <button class="btn btn-secondary btn-sm flex-fill" disabled>
+                            <i class="fas fa-hourglass-half"></i> Hazırlanıyor...
+                        </button>
+                        {% else %}
                         <a href="{{ url_for('reports.view_report', report_id=report.id) }}" class="btn btn-primary btn-sm flex-fill">
                             <i class="fas fa-eye"></i> Görüntüle
                         </a>
@@ -31,6 +46,7 @@
                         <a href="{{ url_for('reports.download_report', report_id=report.id) }}" class="btn btn-success btn-sm">
                             <i class="fas fa-download"></i>
                         </a>
+                        {% endif %}
                         {% endif %}
                     </div>
                 </div>
@@ -87,5 +103,39 @@
     .hover-shadow:hover {
         box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15) !important;
     }
+    .report-processing {
+        border: 2px solid #ffc107;
+        animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.8; }
+    }
 </style>
+
+<script>
+    // Processing durumundaki raporlar için AJAX polling
+    document.addEventListener('DOMContentLoaded', function() {
+        const processingCards = document.querySelectorAll('.report-processing');
+        
+        if (processingCards.length > 0) {
+            // Her 3 saniyede bir durum kontrol et
+            setInterval(function() {
+                processingCards.forEach(function(card) {
+                    const reportId = card.dataset.reportId;
+                    
+                    fetch(`/reports/status/${reportId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'completed' || data.status === 'failed') {
+                                // Durum değiştiyse sayfayı yenile
+                                location.reload();
+                            }
+                        })
+                        .catch(error => console.error('Durum kontrolü hatası:', error));
+                });
+            }, 3000);
+        }
+    });
+</script>
 {% endblock %}

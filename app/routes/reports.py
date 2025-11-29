@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from app import db
+import threading
 from app.models.report import Report
 from app.models.transaction import Transaction
 from app.models.settings import Settings
@@ -16,6 +17,46 @@ from datetime import datetime
 import os
 
 reports_bp = Blueprint('reports', __name__)
+
+def generate_report_async(app, report_id, full_prompt, title, ai_model, username):
+    """Arka planda rapor oluştur"""
+    with app.app_context():
+        try:
+            report = Report.query.get(report_id)
+            if not report:
+                return
+            
+            # AI ile rapor oluştur
+            ai_service = AIService(model=ai_model)
+            content, error = ai_service.generate_report(full_prompt, title)
+            
+            if error:
+                report.status = 'failed'
+                report.content = f'Hata: {error}'
+                db.session.commit()
+                return
+            
+            # PDF oluştur
+            report_generator = ReportGenerator()
+            file_path, file_size, pdf_error = report_generator.generate_pdf(content, title, username)
+            
+            # Raporu güncelle
+            report.content = content
+            report.status = 'completed'
+            report.file_path = file_path
+            report.file_size = file_size
+            
+            db.session.commit()
+            
+        except Exception as e:
+            try:
+                report = Report.query.get(report_id)
+                if report:
+                    report.status = 'failed'
+                    report.content = f'Beklenmeyen hata: {str(e)}'
+                    db.session.commit()
+            except:
+                pass
 
 @reports_bp.route('/')
 @login_required
@@ -140,38 +181,15 @@ def create_report():
         current_app.config['ANTHROPIC_API_KEY'] = settings.anthropic_api_key
         current_app.config['GOOGLE_API_KEY'] = settings.google_api_key
         
-        # AI ile rapor oluştur
-        ai_service = AIService(model=ai_model)
-        content, error = ai_service.generate_report(full_prompt, title)
-        
-        if error:
-            flash(f'Rapor oluşturulurken hata oluştu: {error}', 'danger')
-            return render_template('reports/create.html', 
-                                 credit_cost=credit_cost,
-                                 settings=settings,
-                                 available_models=available_models)
-        
-        # PDF oluştur
-        report_generator = ReportGenerator()
-        file_path, file_size, error = report_generator.generate_pdf(content, title, current_user.username)
-        
-        if error:
-            flash(f'PDF oluşturulurken hata oluştu: {error}', 'danger')
-            # PDF olmadan da raporu kaydet
-            file_path = None
-            file_size = None
-        
-        # Rapor kaydı oluştur
+        # Önce "processing" durumunda boş rapor oluştur
         report = Report(
             user_id=current_user.id,
             title=title,
-            content=content,
+            content='Rapor oluşturuluyor...',
             prompt=prompt,
             format_type='markdown',
-            status='completed',
+            status='processing',
             credits_used=credit_cost,
-            file_path=file_path,
-            file_size=file_size,
             ai_model=ai_model
         )
         db.session.add(report)
@@ -184,16 +202,23 @@ def create_report():
             user_id=current_user.id,
             transaction_type='usage',
             amount=credit_cost,
-            description=f'Rapor oluşturuldu: {title}',
-            report_id=report.id,
+            description=f'Rapor oluşturuluyor: {title}',
             status='completed'
         )
         db.session.add(transaction)
         
         db.session.commit()
         
-        flash('Rapor başarıyla oluşturuldu!', 'success')
-        return redirect(url_for('reports.view_report', report_id=report.id))
+        # Arka planda rapor oluştur
+        thread = threading.Thread(
+            target=generate_report_async,
+            args=(current_app._get_current_object(), report.id, full_prompt, title, ai_model, current_user.username)
+        )
+        thread.daemon = True
+        thread.start()
+        
+        flash('Raporunuz oluşturuluyor! İşlem tamamlandığında burada görünecek.', 'info')
+        return redirect(url_for('reports.list_reports'))
     
     return render_template('reports/create.html', 
                          credit_cost=credit_cost,
@@ -279,6 +304,24 @@ def process_audio():
             'success': False,
             'message': f'Ses işlenirken hata oluştu: {str(e)}'
         }), 500
+
+@reports_bp.route('/status/<int:report_id>')
+@login_required
+def report_status(report_id):
+    """Rapor durumunu JSON olarak döndür"""
+    report = Report.query.get_or_404(report_id)
+    
+    # Yetki kontrolü
+    if report.user_id != current_user.id:
+        return jsonify({'error': 'Yetkisiz erişim'}), 403
+    
+    return jsonify({
+        'id': report.id,
+        'title': report.title,
+        'status': report.status,
+        'created_at': report.created_at.isoformat() if report.created_at else None,
+        'has_pdf': report.file_path is not None
+    })
 
 @reports_bp.route('/delete/<int:report_id>', methods=['POST'])
 @login_required

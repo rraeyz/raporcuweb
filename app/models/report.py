@@ -14,7 +14,7 @@ class Report(db.Model):
     
     # Format ve durum
     format_type = db.Column(db.String(20), default='markdown')  # markdown, html, pdf
-    status = db.Column(db.String(20), default='completed')  # draft, completed, failed
+    status = db.Column(db.String(20), default='processing')  # processing, completed, failed
     
     # Maliyet
     credits_used = db.Column(db.Integer, default=1, nullable=False)

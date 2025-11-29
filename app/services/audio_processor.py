@@ -58,8 +58,11 @@ class AudioProcessor:
             temp_path = os.path.join(temp_dir, filename)
             file.save(temp_path)
             
-            # Ses dosyasını optimize et
+            # Ses dosyasını optimize et (WebM → WAV dönüşümü)
             optimized_path = self._optimize_audio(temp_path, temp_dir)
+            
+            if not optimized_path:
+                return None, "Ses dosyası formatı desteklenmiyor. Lütfen WAV veya FLAC kullanın."
             
             # Ses dosyasını parçalara böl (30 saniye)
             segments = self._split_audio(optimized_path, temp_dir)
@@ -129,14 +132,30 @@ class AudioProcessor:
         
         try:
             # WebM/MP3/M4A → WAV dönüşümü
-            logger.info(f"{file_ext} dosyası WAV'a çevriliyor...")
+            logger.info(f"{file_ext} dosyası WAV'a çevriliyor ve optimize ediliyor...")
             audio = AudioSegment.from_file(file_path)
+            
+            # Ses optimizasyonları
+            # 1. Normalize - Ses seviyesini ayarla (fazla sessizse yükselt)
+            if audio.dBFS < -30:  # Çok sessiz
+                audio = audio + (abs(audio.dBFS) - 20)  # -20 dBFS'ye çek
+                logger.info("Ses seviyesi normalize edildi")
+            
+            # 2. Mono'ya çevir (stereo gereksiz)
+            if audio.channels > 1:
+                audio = audio.set_channels(1)
+                logger.info("Stereo → Mono dönüşümü")
+            
+            # 3. Sample rate'i 16kHz'e ayarla (Google Speech API için optimal)
+            if audio.frame_rate != 16000:
+                audio = audio.set_frame_rate(16000)
+                logger.info(f"Sample rate {audio.frame_rate}Hz → 16000Hz")
             
             # WAV olarak kaydet
             wav_path = os.path.join(temp_dir, f"optimized_{os.path.basename(file_path)}.wav")
-            audio.export(wav_path, format="wav", parameters=["-ar", "16000", "-ac", "1"])
+            audio.export(wav_path, format="wav")
             
-            logger.info(f"Dönüşüm başarılı: {wav_path}")
+            logger.info(f"Dönüşüm ve optimizasyon başarılı: {wav_path}")
             return wav_path
             
         except Exception as e:
@@ -144,8 +163,44 @@ class AudioProcessor:
             return None
     
     def _split_audio(self, file_path, temp_dir, chunk_length=30000):
-        """Tek parça olarak işle (SpeechRecognition 1 dakika limit var ama yeterli)"""
-        return [file_path]
+        """
+        Uzun ses dosyalarını 30 saniyelik parçalara böl
+        (Google Speech API free tier için optimum)
+        """
+        if not PYDUB_AVAILABLE:
+            logger.warning("pydub yok, parçalama yapılamıyor")
+            return [file_path]
+        
+        try:
+            # Ses dosyasını yükle
+            audio = AudioSegment.from_file(file_path)
+            duration_ms = len(audio)
+            
+            # 30 saniyeden kısaysa parçalama
+            if duration_ms <= chunk_length:
+                logger.info(f"Ses dosyası {duration_ms/1000:.1f} saniye, parçalamaya gerek yok")
+                return [file_path]
+            
+            # Parçalara böl
+            segments = []
+            for i, start_ms in enumerate(range(0, duration_ms, chunk_length)):
+                end_ms = min(start_ms + chunk_length, duration_ms)
+                chunk = audio[start_ms:end_ms]
+                
+                # Parça dosyası oluştur
+                chunk_filename = f"chunk_{i}_{os.path.basename(file_path)}"
+                chunk_path = os.path.join(temp_dir, chunk_filename)
+                chunk.export(chunk_path, format="wav", parameters=["-ar", "16000", "-ac", "1"])
+                
+                segments.append(chunk_path)
+                logger.info(f"Parça {i+1} oluşturuldu: {(end_ms-start_ms)/1000:.1f} saniye")
+            
+            logger.info(f"Toplam {len(segments)} parçaya bölündü")
+            return segments
+            
+        except Exception as e:
+            logger.error(f"Ses parçalama hatası: {e}")
+            return [file_path]  # Hata durumunda orjinal dosya
     
     def _transcribe_with_whisper(self, file_path):
         """Whisper hosting'de devre dışı - sadece Google Speech API kullanıyoruz"""

@@ -4,7 +4,8 @@ services:
     env: python
     region: frankfurt
     plan: free
-    buildCommand: pip install -r requirements.txt; chmod +x build.sh; ./build.sh
+    buildCommand: pip install -r requirements.txt
+    preRunCommand: python -c "from app import create_app, db; from sqlalchemy import text; app = create_app(); app.app_context().push(); conn = db.engine.connect(); conn.execute(text('ALTER TABLE reports ADD COLUMN IF NOT EXISTS word_file_path VARCHAR(255)')); conn.execute(text('ALTER TABLE reports ADD COLUMN IF NOT EXISTS word_file_size INTEGER')); conn.commit(); conn.close(); print('Database migration completed!')"
     startCommand: gunicorn run:app --workers 1 --threads 2 --timeout 120 --max-requests 100 --max-requests-jitter 10
     envVars:
       - key: FLASK_ENV

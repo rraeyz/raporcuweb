@@ -7,13 +7,8 @@ from flask import current_app
 from pydub import AudioSegment
 import speech_recognition as sr
 
-# Whisper modülünü opsiyonel olarak içe aktar
-try:
-    import whisper
-    WHISPER_AVAILABLE = True
-except ImportError:
-    WHISPER_AVAILABLE = False
-    print("Whisper modülü bulunamadı. Google Speech API kullanılacak.")
+# Whisper hosting'de sorunlu - sadece Google Speech API kullanıyoruz
+WHISPER_AVAILABLE = False
 
 class AudioProcessor:
     """Ses dosyası işleme sınıfı"""
@@ -154,33 +149,8 @@ class AudioProcessor:
             return []
     
     def _transcribe_with_whisper(self, file_path):
-        """Whisper ile ses tanıma"""
-        try:
-            if not WHISPER_AVAILABLE:
-                return None
-            
-            # Model ilk kulanımda yüklenir (lazy loading)
-            if self.whisper_model is None:
-                print("Whisper modeli yükleniyor...")
-                upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
-                model_dir = os.path.join(upload_folder, 'models')
-                os.makedirs(model_dir, exist_ok=True)
-                self.whisper_model = whisper.load_model("base", download_root=model_dir)
-            
-            result = self.whisper_model.transcribe(
-                file_path,
-                language="tr",
-                fp16=False,
-                temperature=0,
-                best_of=1,
-                beam_size=1
-            )
-            
-            return result["text"].strip()
-            
-        except Exception as e:
-            print(f"Whisper hatası: {e}")
-            return None
+        """Whisper hosting'de devre dışı - sadece Google Speech API kullanıyoruz"""
+        return None
     
     def _transcribe_with_google(self, file_path):
         """Google Speech API ile ses tanıma"""

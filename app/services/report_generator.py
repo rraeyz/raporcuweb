@@ -78,34 +78,34 @@ class ReportGenerator:
                 
                 if for_pdf and MATPLOTLIB_AVAILABLE:
                     try:
-                        # Matplotlib ile LaTeX render - metin boyutuna uygun büyüktük
-                        fig, ax = plt.subplots(figsize=(10, 2))
-                        ax.text(0.5, 0.5, f'${latex}$', fontsize=32, ha='center', va='center', transform=ax.transAxes)
+                        # Matplotlib ile LaTeX render (display) - orta boyut
+                        fig, ax = plt.subplots(figsize=(5, 0.8))
+                        ax.text(0.5, 0.5, f'${latex}$', fontsize=13, ha='center', va='center', transform=ax.transAxes)
                         ax.axis('off')
                         
                         buf = BytesIO()
-                        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', transparent=True, pad_inches=0.15)
+                        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', transparent=True, pad_inches=0.05)
                         plt.close(fig)
                         
                         img_data = base64.b64encode(buf.getvalue()).decode()
-                        return f'<div style="text-align: center; margin: 20px 0;"><img src="data:image/png;base64,{img_data}" alt="{latex}" style="max-width: 90%; height: auto;"/></div>'
+                        return f'<div style="text-align: center; margin: 12px 0;"><img src="data:image/png;base64,{img_data}" alt="Math: {latex}" style="max-width: 100%; height: auto;"/></div>'
                     except Exception as e:
                         current_app.logger.warning(f'PDF LaTeX render hatası: {e}')
                         return f'<div style="text-align: center;"><code>$${latex}$$</code></div>'
                 
                 elif not for_pdf and MATPLOTLIB_AVAILABLE:
-                    # Word için de matplotlib PNG kullan (MathML제대로 çalışmıyor)
+                    # Word için Pandoc kullanılacak, buraya gelmemeli ama fallback için
                     try:
-                        fig, ax = plt.subplots(figsize=(6, 1))
-                        ax.text(0.5, 0.5, f'${latex}$', fontsize=16, ha='center', va='center', transform=ax.transAxes)
+                        fig, ax = plt.subplots(figsize=(5, 0.8))
+                        ax.text(0.5, 0.5, f'${latex}$', fontsize=13, ha='center', va='center', transform=ax.transAxes)
                         ax.axis('off')
                         
                         buf = BytesIO()
-                        plt.savefig(buf, format='png', dpi=200, bbox_inches='tight', transparent=True, pad_inches=0.1)
+                        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', transparent=True, pad_inches=0.05)
                         plt.close(fig)
                         
                         img_data = base64.b64encode(buf.getvalue()).decode()
-                        return f'<div style="text-align: center; margin: 15px 0;"><img src="data:image/png;base64,{img_data}" alt="Math: {latex}" style="max-width: 100%;"/></div>'
+                        return f'<div style="text-align: center; margin: 12px 0;"><img src="data:image/png;base64,{img_data}" alt="Math: {latex}" style="max-width: 100%;"/></div>'
                     except Exception as e:
                         current_app.logger.warning(f'Word LaTeX render hatası: {e}')
                         return f'<div style="text-align: center;"><code>$${latex}$$</code></div>'
@@ -120,34 +120,34 @@ class ReportGenerator:
                 
                 if for_pdf and MATPLOTLIB_AVAILABLE:
                     try:
-                        # Matplotlib ile inline LaTeX render - metin boyutuna uygun
-                        fig, ax = plt.subplots(figsize=(5, 1))
-                        ax.text(0.5, 0.5, f'${latex}$', fontsize=22, ha='center', va='center', transform=ax.transAxes)
+                        # Matplotlib ile inline LaTeX render - metin boyutuna uygun (küçük)
+                        fig, ax = plt.subplots(figsize=(3, 0.4))
+                        ax.text(0.5, 0.5, f'${latex}$', fontsize=11, ha='center', va='center', transform=ax.transAxes)
                         ax.axis('off')
                         
                         buf = BytesIO()
-                        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', transparent=True, pad_inches=0.08)
+                        plt.savefig(buf, format='png', dpi=120, bbox_inches='tight', transparent=True, pad_inches=0.02)
                         plt.close(fig)
                         
                         img_data = base64.b64encode(buf.getvalue()).decode()
-                        return f'<img src="data:image/png;base64,{img_data}" style="vertical-align: middle; height: 1.4em; margin: 0 2px;" alt="{latex}"/>'
+                        return f'<img src="data:image/png;base64,{img_data}" style="vertical-align: middle; height: 1.1em; margin: 0 1px;" alt="{latex}"/>'
                     except Exception as e:
                         current_app.logger.warning(f'PDF LaTeX render hatası: {e}')
                         return f'<code>${latex}$</code>'
                 
                 elif not for_pdf and MATPLOTLIB_AVAILABLE:
-                    # Word için de matplotlib PNG kullan (MathML제대로 çalışmıyor)
+                    # Word için Pandoc kullanılacak, buraya gelmemeli ama fallback için
                     try:
-                        fig, ax = plt.subplots(figsize=(5, 1))
-                        ax.text(0.5, 0.5, f'${latex}$', fontsize=22, ha='center', va='center', transform=ax.transAxes)
+                        fig, ax = plt.subplots(figsize=(3, 0.4))
+                        ax.text(0.5, 0.5, f'${latex}$', fontsize=11, ha='center', va='center', transform=ax.transAxes)
                         ax.axis('off')
                         
                         buf = BytesIO()
-                        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', transparent=True, pad_inches=0.08)
+                        plt.savefig(buf, format='png', dpi=120, bbox_inches='tight', transparent=True, pad_inches=0.02)
                         plt.close(fig)
                         
                         img_data = base64.b64encode(buf.getvalue()).decode()
-                        return f'<img src="data:image/png;base64,{img_data}" style="vertical-align: middle; height: 1.4em; margin: 0 2px;" alt="{latex}"/>'
+                        return f'<img src="data:image/png;base64,{img_data}" style="vertical-align: middle; height: 1.1em; margin: 0 1px;" alt="{latex}"/>'
                     except Exception as e:
                         current_app.logger.warning(f'Word LaTeX render hatası: {e}')
                         return f'<code>${latex}$</code>'
@@ -214,57 +214,62 @@ class ReportGenerator:
             # Markdown'u HTML'e çevir (PDF için LaTeX render)
             html_content = self.markdown_to_html(content, for_pdf=True)
             
-            # Profesyonel PDF CSS stili
+            # Profesyonel PDF CSS stili - Times New Roman 12pt
             css_style = """
                 @page {
                     size: A4;
-                    margin: 2cm;
+                    margin: 2.5cm;
                 }
                 
                 body {
-                    font-family: 'DejaVu Sans', Arial, sans-serif;
-                    font-size: 11pt;
-                    line-height: 1.6;
-                    color: #1a1a1a;
+                    font-family: 'Times New Roman', 'DejaVu Serif', serif;
+                    font-size: 12pt;
+                    line-height: 1.5;
+                    color: #000000;
                     text-align: justify;
                 }
                 
                 h1 {
-                    font-size: 24pt;
+                    font-family: 'Times New Roman', 'DejaVu Serif', serif;
+                    font-size: 18pt;
                     font-weight: bold;
-                    color: #1a1a1a;
+                    color: #000000;
                     text-align: center;
                     margin-top: 0;
-                    margin-bottom: 30px;
+                    margin-bottom: 24px;
                     page-break-after: avoid;
                 }
                 
                 h2 {
-                    font-size: 18pt;
-                    font-weight: bold;
-                    color: #2c3e50;
-                    margin-top: 20px;
-                    margin-bottom: 12px;
-                    page-break-after: avoid;
-                    border-bottom: 2px solid #3498db;
-                    padding-bottom: 5px;
-                }
-                
-                h3 {
+                    font-family: 'Times New Roman', 'DejaVu Serif', serif;
                     font-size: 14pt;
                     font-weight: bold;
-                    color: #34495e;
-                    margin-top: 16px;
+                    color: #000000;
+                    text-align: left;
+                    margin-top: 18px;
                     margin-bottom: 10px;
                     page-break-after: avoid;
                 }
                 
+                h3 {
+                    font-family: 'Times New Roman', 'DejaVu Serif', serif;
+                    font-size: 13pt;
+                    font-weight: bold;
+                    color: #000000;
+                    text-align: left;
+                    margin-top: 14px;
+                    margin-bottom: 8px;
+                    page-break-after: avoid;
+                }
+                
                 h4, h5, h6 {
+                    font-family: 'Times New Roman', 'DejaVu Serif', serif;
                     font-size: 12pt;
                     font-weight: bold;
-                    color: #555;
+                    color: #000000;
+                    text-align: left;
                     margin-top: 12px;
-                    margin-bottom: 8px;
+                    margin-bottom: 6px;
                     page-break-after: avoid;
                 }
                 
@@ -443,20 +448,40 @@ class ReportGenerator:
                 if result.returncode == 0 and os.path.exists(filepath):
                     file_size = os.path.getsize(filepath)
                     
-                    # İlk başlığı ortala
+                    # Word belgesini düzenle: Times New Roman, siyah başlıklar, hizalama
                     try:
                         from docx import Document
                         from docx.enum.text import WD_ALIGN_PARAGRAPH
+                        from docx.shared import Pt, RGBColor
+                        
                         doc = Document(filepath)
                         
-                        for para in doc.paragraphs[:3]:
-                            if para.style.name in ['Heading 1', 'Title', 'Heading1']:
-                                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                                break
+                        # Tüm paragrafları işle
+                        first_h1_found = False
+                        for para in doc.paragraphs:
+                            # Times New Roman fontunu ayarla
+                            for run in para.runs:
+                                run.font.name = 'Times New Roman'
+                                run.font.size = Pt(12)
+                            
+                            # Başlıkları işle
+                            if para.style.name.startswith('Heading'):
+                                # İlk H1'i ortala
+                                if para.style.name in ['Heading 1', 'Title', 'Heading1'] and not first_h1_found:
+                                    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                    first_h1_found = True
+                                else:
+                                    para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                                
+                                # Başlıkları siyah yap
+                                for run in para.runs:
+                                    run.font.color.rgb = RGBColor(0, 0, 0)
+                                    run.font.name = 'Times New Roman'
                         
                         doc.save(filepath)
-                    except:
-                        pass  # Hizalama başarısız olsa da devam et
+                    except Exception as e:
+                        current_app.logger.warning(f'Word düzenleme hatası: {e}')
+                        pass  # Düzenleme başarısız olsa da devam et
                     
                     return filepath, file_size, None
                 else:

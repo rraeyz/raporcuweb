@@ -107,48 +107,12 @@ class AudioProcessor:
                     pass
     
     def _optimize_audio(self, file_path, temp_dir):
-        """Ses dosyasını Speech Recognition için optimize eder"""
-        try:
-            audio = AudioSegment.from_file(file_path)
-            
-            # Normalize et
-            normalized = audio.normalize()
-            
-            # 16000 Hz'e dönüştür (optimal)
-            if audio.frame_rate != 16000:
-                normalized = normalized.set_frame_rate(16000)
-            
-            # Mono'ya çevir
-            if audio.channels > 1:
-                normalized = normalized.set_channels(1)
-            
-            # WAV formatında kaydet
-            output_path = os.path.join(temp_dir, f"optimized_{os.path.basename(file_path)}.wav")
-            normalized.export(output_path, format="wav")
-            
-            return output_path
-            
-        except Exception as e:
-            print(f"Ses optimizasyonu hatası: {e}")
-            return file_path
+        """SpeechRecognition kendi optimize ediyor"""
+        return file_path
     
     def _split_audio(self, file_path, temp_dir, chunk_length=30000):
-        """Ses dosyasını 30 saniyelik parçalara böler"""
-        try:
-            audio = AudioSegment.from_file(file_path)
-            segments = []
-            
-            for i in range(0, len(audio), chunk_length):
-                chunk = audio[i:i + chunk_length]
-                segment_path = os.path.join(temp_dir, f"segment_{i//chunk_length}.wav")
-                chunk.export(segment_path, format="wav")
-                segments.append(segment_path)
-            
-            return segments
-            
-        except Exception as e:
-            print(f"Ses parçalama hatası: {e}")
-            return []
+        """Tek parça olarak işle (SpeechRecognition 1 dakika limit var ama yeterli)"""
+        return [file_path]
     
     def _transcribe_with_whisper(self, file_path):
         """Whisper hosting'de devre dışı - sadece Google Speech API kullanıyoruz"""

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}{{ settings.site_name if settings else 'RaporcuWeb' }} - Ana Sayfa{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="bg-primary text-white py-5">
+    <div class="container text-center py-5">
+        <h1 class="display-4 fw-bold mb-4">
+            <i class="fas fa-robot"></i> Yapay Zeka Destekli Rapor Oluşturma
+        </h1>
+        <p class="lead mb-4">Profesyonel raporlarınızı dakikalar içinde oluşturun. AI teknolojisi ile hızlı ve kaliteli çözümler.</p>
+        {% if not current_user.is_authenticated %}
+        <div>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg me-2">
+                <i class="fas fa-user-plus"></i> Hemen Başlayın
+            </a>
+            <a href="{{ url_for('main.pricing') }}" class="btn btn-outline-light btn-lg">
+                <i class="fas fa-tag"></i> Fiyatlandırma
+            </a>
+        </div>
+        {% else %}
+        <a href="{{ url_for('reports.create_report') }}" class="btn btn-light btn-lg">
+            <i class="fas fa-plus-circle"></i> Yeni Rapor Oluştur
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Features -->
+<div class="container my-5 py-5">
+    <h2 class="text-center mb-5">Neden RaporcuWeb?</h2>
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body text-center p-4">
+                    <i class="fas fa-bolt fa-3x text-primary mb-3"></i>
+                    <h5 class="card-title">Hızlı ve Kolay</h5>
+                    <p class="card-text">Konunuzu girin, AI'nın dakikalar içinde profesyonel raporunuzu oluşturmasını izleyin.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body text-center p-4">
+                    <i class="fas fa-star fa-3x text-warning mb-3"></i>
+                    <h5 class="card-title">Profesyonel Kalite</h5>
+                    <p class="card-text">En gelişmiş AI modelleri ile akademik ve iş standartlarında raporlar.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body text-center p-4">
+                    <i class="fas fa-file-pdf fa-3x text-danger mb-3"></i>
+                    <h5 class="card-title">PDF İndirme</h5>
+                    <p class="card-text">Raporlarınızı PDF formatında indirin, paylaşın veya yazdırın.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CTA Section -->
+{% if not current_user.is_authenticated %}
+<div class="bg-light py-5">
+    <div class="container text-center">
+        <h2 class="mb-4">Bugün Başlayın!</h2>
+        <p class="lead mb-4">Ücretsiz kayıt olun ve ilk raporunuzu oluşturun.</p>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg">
+            <i class="fas fa-user-plus"></i> Ücretsiz Kayıt Ol
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

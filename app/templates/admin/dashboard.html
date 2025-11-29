@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+    <h2 class="mb-4"><i class="fas fa-cog"></i> Admin Kontrol Paneli</h2>
+    
+    <!-- İstatistikler -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h6>Toplam Kullanıcı</h6>
+                    <h2>{{ total_users }}</h2>
+                    <small>Aktif: {{ active_users }}</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h6>Toplam Rapor</h6>
+                    <h2>{{ total_reports }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body">
+                    <h6>Toplam Gelir</h6>
+                    <h2>{{ total_revenue|currency }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h6>Hızlı Erişim</h6>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('admin.users') }}" class="btn btn-light btn-sm">Kullanıcılar</a>
+                        <a href="{{ url_for('admin.settings') }}" class="btn btn-light btn-sm">Ayarlar</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Son Kullanıcılar -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Son Kullanıcılar</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Kullanıcı</th>
+                                    <th>Email</th>
+                                    <th>Kayıt</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in recent_users %}
+                                <tr>
+                                    <td>{{ user.username }}</td>
+                                    <td>{{ user.email }}</td>
+                                    <td>{{ user.created_at|datetime('%d.%m.%Y') }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <a href="{{ url_for('admin.users') }}" class="btn btn-sm btn-outline-primary">Tümünü Gör</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Son Raporlar -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Son Raporlar</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Başlık</th>
+                                    <th>Kullanıcı</th>
+                                    <th>Tarih</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for report in recent_reports %}
+                                <tr>
+                                    <td>{{ report.title[:30] }}...</td>
+                                    <td>{{ report.user.username }}</td>
+                                    <td>{{ report.created_at|datetime('%d.%m.%Y') }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <a href="{{ url_for('admin.reports') }}" class="btn btn-sm btn-outline-primary">Tümünü Gör</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Son İşlemler -->
+    <div class="card">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Son İşlemler</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Kullanıcı</th>
+                            <th>İşlem</th>
+                            <th>Miktar</th>
+                            <th>Tarih</th>
+                            <th>Durum</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in recent_transactions %}
+                        <tr>
+                            <td>{{ transaction.user.username }}</td>
+                            <td>{{ transaction.description }}</td>
+                            <td>{{ transaction.amount }} Kr</td>
+                            <td>{{ transaction.created_at|datetime }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'success' if transaction.status == 'completed' else 'warning' }}">
+                                    {{ transaction.status }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <a href="{{ url_for('admin.transactions') }}" class="btn btn-outline-primary">Tüm İşlemleri Gör</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}{{ report.title }} - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="card shadow">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">
+                <i class="fas fa-file-alt"></i> {{ report.title }}
+            </h4>
+            <div>
+                {% if report.file_path %}
+                <a href="{{ url_for('reports.download_report', report_id=report.id) }}" class="btn btn-success">
+                    <i class="fas fa-download"></i> PDF İndir
+                </a>
+                {% endif %}
+                <button onclick="window.print()" class="btn btn-primary">
+                    <i class="fas fa-print"></i> Yazdır
+                </button>
+                <form method="POST" action="{{ url_for('reports.delete_report', report_id=report.id) }}" 
+                      style="display: inline;" onsubmit="return confirm('Bu raporu silmek istediğinizden emin misiniz?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Sil
+                    </button>
+                </form>
+            </div>
+        </div>
+        <div class="card-body p-4">
+            <div class="mb-3">
+                <small class="text-muted">
+                    <i class="fas fa-calendar"></i> {{ report.created_at|datetime }} | 
+                    <i class="fas fa-robot"></i> {{ report.ai_model or 'AI' }} | 
+                    <i class="fas fa-coins"></i> {{ report.credits_used }} kredi
+                </small>
+            </div>
+            
+            <hr>
+            
+            <div class="report-content">
+                {{ report.content|safe|replace('\n', '<br>')|replace('# ', '<h2>')|replace('## ', '<h3>') }}
+            </div>
+        </div>
+    </div>
+    
+    <div class="text-center mt-4">
+        <a href="{{ url_for('reports.list_reports') }}" class="btn btn-outline-primary">
+            <i class="fas fa-arrow-left"></i> Raporlarıma Dön
+        </a>
+    </div>
+</div>
+
+<style>
+    .report-content {
+        line-height: 1.8;
+        font-size: 1.1rem;
+    }
+    .report-content h2 {
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+    .report-content h3 {
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+        font-size: 1.25rem;
+        font-weight: bold;
+    }
+    @media print {
+        .navbar, .card-header div, .text-center, footer {
+            display: none !important;
+        }
+    }
+</style>
+{% endblock %}

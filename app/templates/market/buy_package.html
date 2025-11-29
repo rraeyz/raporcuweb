@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Paket Satın Al - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-md-6 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-shopping-cart"></i> Paket Satın Al</h4>
+                </div>
+                <div class="card-body p-4">
+                    <h5 class="mb-3">{{ package.name }}</h5>
+                    <p class="text-muted">{{ package.description }}</p>
+                    
+                    <hr>
+                    
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Kredi:</span>
+                            <strong>{{ package.credits }} Kredi</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Fiyat:</span>
+                            <strong>{{ package.price|currency }}</strong>
+                        </div>
+                        {% if promo_discount > 0 %}
+                        <div class="d-flex justify-content-between text-success mb-2">
+                            <span>Promosyon İndirimi:</span>
+                            <strong>-{{ promo_discount|currency }}</strong>
+                        </div>
+                        {% endif %}
+                        <hr>
+                        <div class="d-flex justify-content-between">
+                            <span class="h5">Toplam:</span>
+                            <strong class="h5">{{ final_price|currency }}</strong>
+                        </div>
+                    </div>
+                    
+                    <form method="POST" action="{{ url_for('market.buy_package', package_id=package.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="mb-4">
+                            <label for="promo_code" class="form-label">Promosyon Kodu (Opsiyonel)</label>
+                            <input type="text" class="form-control" id="promo_code" name="promo_code" 
+                                   placeholder="PROMO2025">
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> Shopier güvenli ödeme sayfasına yönlendirileceksiniz.
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-credit-card"></i> Ödeme Sayfasına Git
+                            </button>
+                            <a href="{{ url_for('market.packages') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left"></i> Geri Dön
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

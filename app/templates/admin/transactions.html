@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Tüm İşlemler - Admin - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-exchange-alt"></i> Tüm İşlemler</h2>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Admin Panel
+        </a>
+    </div>
+    
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Tarih</th>
+                            <th>Kullanıcı</th>
+                            <th>Tip</th>
+                            <th>Kredi</th>
+                            <th>Tutar</th>
+                            <th>Açıklama</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions.items %}
+                        <tr>
+                            <td>{{ transaction.created_at|datetime }}</td>
+                            <td>
+                                <a href="{{ url_for('admin.view_user', user_id=transaction.user.id) }}">
+                                    {{ transaction.user.username }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if transaction.transaction_type == 'purchase' %}
+                                    <span class="badge bg-success">Satın Alma</span>
+                                {% elif transaction.transaction_type == 'usage' %}
+                                    <span class="badge bg-warning">Kullanım</span>
+                                {% elif transaction.transaction_type == 'refund' %}
+                                    <span class="badge bg-info">İade</span>
+                                {% else %}
+                                    <span class="badge bg-primary">Admin</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if transaction.credits > 0 %}
+                                    <span class="text-success">+{{ transaction.credits }}</span>
+                                {% else %}
+                                    <span class="text-danger">{{ transaction.credits }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if transaction.amount %}
+                                    {{ transaction.amount }} TL
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>{{ transaction.description }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if transactions.pages > 1 %}
+            <nav aria-label="Sayfa navigasyonu">
+                <ul class="pagination justify-content-center">
+                    {% if transactions.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin.transactions', page=transactions.prev_num) }}">Önceki</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in transactions.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                        {% if page_num %}
+                            {% if page_num != transactions.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin.transactions', page=page_num) }}">{{ page_num }}</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                            {% endif %}
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if transactions.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('admin.transactions', page=transactions.next_num) }}">Sonraki</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

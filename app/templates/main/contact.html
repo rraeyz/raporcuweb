@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}İletişim - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <h2 class="mb-4">İletişim</h2>
+            
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h4 class="mb-4">Bizimle İletişime Geçin</h4>
+                    
+                    {% if settings %}
+                    <div class="row">
+                        {% if settings.contact_email %}
+                        <div class="col-md-6 mb-3">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-envelope fa-2x text-primary me-3"></i>
+                                <div>
+                                    <h6 class="mb-0">E-posta</h6>
+                                    <a href="mailto:{{ settings.contact_email }}">{{ settings.contact_email }}</a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if settings.phone %}
+                        <div class="col-md-6 mb-3">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-phone fa-2x text-primary me-3"></i>
+                                <div>
+                                    <h6 class="mb-0">Telefon</h6>
+                                    <a href="tel:{{ settings.phone }}">{{ settings.phone }}</a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if settings.support_email %}
+                        <div class="col-md-6 mb-3">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-life-ring fa-2x text-primary me-3"></i>
+                                <div>
+                                    <h6 class="mb-0">Destek</h6>
+                                    <a href="mailto:{{ settings.support_email }}">{{ settings.support_email }}</a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
+                    <hr class="my-4">
+                    
+                    <p class="text-muted">
+                        Sorularınız, önerileriniz veya destek talepleriniz için yukarıdaki iletişim bilgilerini kullanabilirsiniz.
+                        Size en kısa sürede dönüş yapacağız.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

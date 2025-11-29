@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Kullanıcı Detayı - Admin - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-user"></i> Kullanıcı Detayları</h2>
+        <a href="{{ url_for('admin.users') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Geri Dön
+        </a>
+    </div>
+    
+    <div class="row">
+        <!-- Kullanıcı Bilgileri -->
+        <div class="col-md-4">
+            <div class="card shadow mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Kullanıcı Bilgileri</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><strong>Kullanıcı Adı:</strong> {{ user.username }}</li>
+                        <li class="mb-2"><strong>E-posta:</strong> {{ user.email }}</li>
+                        <li class="mb-2"><strong>Ad Soyad:</strong> {{ user.full_name or 'Belirtilmemiş' }}</li>
+                        <li class="mb-2">
+                            <strong>Durum:</strong>
+                            {% if user.is_active %}
+                                <span class="badge bg-success">Aktif</span>
+                            {% else %}
+                                <span class="badge bg-danger">Pasif</span>
+                            {% endif %}
+                        </li>
+                        <li class="mb-2">
+                            <strong>E-posta Doğrulama:</strong>
+                            {% if user.is_email_verified %}
+                                <span class="badge bg-success">Doğrulanmış</span>
+                            {% else %}
+                                <span class="badge bg-warning">Doğrulanmamış</span>
+                            {% endif %}
+                        </li>
+                        <li class="mb-2">
+                            <strong>Admin:</strong>
+                            {% if user.is_admin %}
+                                <span class="badge bg-primary">Evet</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Hayır</span>
+                            {% endif %}
+                        </li>
+                        <li class="mb-2"><strong>Kayıt Tarihi:</strong> {{ user.created_at|datetime }}</li>
+                        <li class="mb-2"><strong>Son Giriş:</strong> {{ user.last_login|datetime if user.last_login else 'Hiç' }}</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Kredi İşlemleri -->
+            <div class="card shadow">
+                <div class="card-body">
+                    <h5 class="card-title">Kredi Yönetimi</h5>
+                    <p class="h3 text-center my-4">
+                        <span class="badge bg-primary" style="font-size: 1.5rem;">
+                            {{ user.credits }} Kredi
+                        </span>
+                    </p>
+                    <form method="POST" action="{{ url_for('admin.adjust_credits', user_id=user.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="mb-3">
+                            <label for="credits" class="form-label">Kredi Ekle/Çıkar</label>
+                            <input type="number" class="form-control" id="credits" name="credits" 
+                                   placeholder="Örn: 100 veya -50" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Açıklama</label>
+                            <input type="text" class="form-control" id="description" name="description" 
+                                   placeholder="Kredi ayarlama nedeni" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-coins"></i> Kredi Güncelle
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Raporlar ve İşlemler -->
+        <div class="col-md-8">
+            <!-- Son Raporlar -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-file-alt"></i> Son Raporlar</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Tarih</th>
+                                    <th>Başlık</th>
+                                    <th>AI Model</th>
+                                    <th>İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for report in user.reports[-10:] %}
+                                <tr>
+                                    <td>{{ report.created_at|datetime('%d.%m.%Y %H:%M') }}</td>
+                                    <td>{{ report.title }}</td>
+                                    <td><span class="badge bg-info">{{ report.ai_model }}</span></td>
+                                    <td>
+                                        <a href="{{ url_for('reports.view_report', report_id=report.id) }}" 
+                                           class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted">Henüz rapor yok</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Son İşlemler -->
+            <div class="card shadow">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-exchange-alt"></i> Son İşlemler</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Tarih</th>
+                                    <th>Tip</th>
+                                    <th>Kredi</th>
+                                    <th>Tutar</th>
+                                    <th>Açıklama</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in user.transactions[-10:] %}
+                                <tr>
+                                    <td>{{ transaction.created_at|datetime('%d.%m.%Y %H:%M') }}</td>
+                                    <td>
+                                        {% if transaction.transaction_type == 'purchase' %}
+                                            <span class="badge bg-success">Satın Alma</span>
+                                        {% elif transaction.transaction_type == 'usage' %}
+                                            <span class="badge bg-warning">Kullanım</span>
+                                        {% elif transaction.transaction_type == 'refund' %}
+                                            <span class="badge bg-info">İade</span>
+                                        {% else %}
+                                            <span class="badge bg-primary">Admin</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transaction.credits > 0 %}
+                                            <span class="text-success">+{{ transaction.credits }}</span>
+                                        {% else %}
+                                            <span class="text-danger">{{ transaction.credits }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ transaction.amount }} TL</td>
+                                    <td>{{ transaction.description }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">Henüz işlem yok</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

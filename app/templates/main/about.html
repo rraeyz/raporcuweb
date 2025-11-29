@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Hakkımızda - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <h2 class="mb-4">Hakkımızda</h2>
+            
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <h4>RaporcuWeb Nedir?</h4>
+                    <p class="lead">
+                        {{ settings.site_description if settings else 'Yapay Zeka Destekli Profesyonel Rapor Oluşturma Platformu' }}
+                    </p>
+                    <p>
+                        RaporcuWeb, en gelişmiş yapay zeka teknolojilerini kullanarak kullanıcıların dakikalar içinde 
+                        profesyonel kalitede raporlar oluşturmasını sağlayan yenilikçi bir platformdur.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <h4>Neden RaporcuWeb?</h4>
+                    <ul class="list-unstyled">
+                        <li class="mb-3">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            <strong>Hızlı ve Kolay:</strong> Konunuzu girin, AI'nın raporunuzu oluşturmasını izleyin.
+                        </li>
+                        <li class="mb-3">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            <strong>Profesyonel Kalite:</strong> Akademik ve iş standartlarında raporlar.
+                        </li>
+                        <li class="mb-3">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            <strong>Çoklu AI Desteği:</strong> OpenAI, Anthropic, Google AI seçenekleri.
+                        </li>
+                        <li class="mb-3">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            <strong>Güvenli ve Gizli:</strong> Verileriniz güvende.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="text-center">
+                <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-user-plus"></i> Hemen Başlayın
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

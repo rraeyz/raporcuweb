@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Yeni Duyuru - Admin - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-white">
+                    <h4 class="mb-0"><i class="fas fa-plus"></i> Yeni Duyuru</h4>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('admin.create_announcement') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Başlık *</label>
+                            <input type="text" class="form-control" id="title" name="title" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="content" class="form-label">İçerik *</label>
+                            <textarea class="form-control" id="content" name="content" rows="4" required></textarea>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="announcement_type" class="form-label">Duyuru Tipi</label>
+                                <select class="form-select" id="announcement_type" name="announcement_type">
+                                    <option value="info">Bilgi (Mavi)</option>
+                                    <option value="success">Başarı (Yeşil)</option>
+                                    <option value="warning">Uyarı (Sarı)</option>
+                                    <option value="danger">Tehlike (Kırmızı)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="priority" class="form-label">Öncelik</label>
+                                <input type="number" class="form-control" id="priority" name="priority" value="0">
+                                <div class="form-text">Yüksek öncelik üstte gösterilir</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="valid_until" class="form-label">Son Geçerlilik Tarihi</label>
+                            <input type="date" class="form-control" id="valid_until" name="valid_until">
+                            <div class="form-text">Boş bırakırsanız süresiz olur</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Gösterim Yerleri</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="show_on_dashboard" 
+                                       name="show_on_dashboard" checked>
+                                <label class="form-check-label" for="show_on_dashboard">
+                                    Dashboard'da Göster
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="show_on_login" 
+                                       name="show_on_login">
+                                <label class="form-check-label" for="show_on_login">
+                                    Giriş Sayfasında Göster
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="is_active" name="is_active" checked>
+                                <label class="form-check-label" for="is_active">Aktif</label>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Duyuruyu Oluştur
+                            </button>
+                            <a href="{{ url_for('admin.announcements') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left"></i> Geri Dön
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

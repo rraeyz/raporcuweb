@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}İşlem Geçmişi - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <h2 class="mb-4"><i class="fas fa-history"></i> İşlem Geçmişi</h2>
+    
+    {% if transactions.items %}
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Tarih</th>
+                            <th>İşlem</th>
+                            <th>Miktar</th>
+                            <th>Durum</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions.items %}
+                        <tr>
+                            <td>{{ transaction.created_at|datetime }}</td>
+                            <td>
+                                {{ transaction.description }}
+                                {% if transaction.payment_amount %}
+                                <br><small class="text-muted">{{ transaction.payment_amount|currency }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-{% if transaction.transaction_type == 'purchase' %}success{% else %}warning{% endif %}">
+                                    {% if transaction.transaction_type == 'purchase' %}+{% else %}-{% endif %}{{ transaction.amount }} Kr
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-{% if transaction.status == 'completed' %}success{% elif transaction.status == 'pending' %}warning{% else %}danger{% endif %}">
+                                    {{ transaction.status }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if transactions.pages > 1 %}
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if transactions.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('market.transactions', page=transactions.prev_num) }}">Önceki</a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in transactions.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                        {% if page_num %}
+                            <li class="page-item {% if page_num == transactions.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('market.transactions', page=page_num) }}">{{ page_num }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if transactions.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('market.transactions', page=transactions.next_num) }}">Sonraki</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-history fa-5x text-muted mb-4"></i>
+        <h4>Henüz işlem geçmişiniz yok</h4>
+        <p class="text-muted">Kredi satın aldığınızda veya rapor oluşturduğunuzda işlemler burada görünecek.</p>
+        <a href="{{ url_for('market.packages') }}" class="btn btn-primary">
+            <i class="fas fa-shopping-cart"></i> Kredi Satın Al
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <h2 class="mb-4"><i class="fas fa-tachometer-alt"></i> Kontrol Paneli</h2>
+    
+    <!-- İstatistikler -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-subtitle mb-2">Kredi Bakiyeniz</h6>
+                            <h3 class="card-title mb-0">{{ current_user.credits }}</h3>
+                        </div>
+                        <i class="fas fa-coins fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-subtitle mb-2">Toplam Rapor</h6>
+                            <h3 class="card-title mb-0">{{ total_reports }}</h3>
+                        </div>
+                        <i class="fas fa-file-alt fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-subtitle mb-2">Harcanan Kredi</h6>
+                            <h3 class="card-title mb-0">{{ total_credits_spent }}</h3>
+                        </div>
+                        <i class="fas fa-chart-line fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h6 class="card-subtitle mb-3">Hızlı İşlemler</h6>
+                    <a href="{{ url_for('reports.create_report') }}" class="btn btn-light btn-sm">
+                        <i class="fas fa-plus"></i> Yeni Rapor
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Duyurular -->
+    {% if announcements %}
+    <div class="mb-4">
+        {% for announcement in announcements %}
+        <div class="alert alert-{{ announcement.announcement_type }} alert-dismissible fade show">
+            <h6 class="alert-heading"><i class="fas fa-bullhorn"></i> {{ announcement.title }}</h6>
+            <p class="mb-0">{{ announcement.content }}</p>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <div class="row">
+        <!-- Son Raporlar -->
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Son Raporlarım</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_reports %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Başlık</th>
+                                    <th>Tarih</th>
+                                    <th>Kredi</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for report in recent_reports %}
+                                <tr>
+                                    <td>{{ report.title }}</td>
+                                    <td>{{ report.created_at|datetime }}</td>
+                                    <td>{{ report.credits_used }}</td>
+                                    <td>
+                                        <a href="{{ url_for('reports.view_report', report_id=report.id) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <a href="{{ url_for('reports.list_reports') }}" class="btn btn-outline-primary">
+                        Tümünü Görüntüle <i class="fas fa-arrow-right"></i>
+                    </a>
+                    {% else %}
+                    <p class="text-muted text-center py-4">Henüz rapor oluşturmadınız.</p>
+                    <div class="text-center">
+                        <a href="{{ url_for('reports.create_report') }}" class="btn btn-primary">
+                            <i class="fas fa-plus-circle"></i> İlk Raporunuzu Oluşturun
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Son İşlemler -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-history"></i> Son İşlemler</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_transactions %}
+                    <div class="list-group list-group-flush">
+                        {% for transaction in recent_transactions %}
+                        <div class="list-group-item px-0">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <small class="text-muted">{{ transaction.created_at|datetime }}</small>
+                                    <p class="mb-0 small">{{ transaction.description }}</p>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-{% if transaction.transaction_type == 'purchase' %}success{% else %}warning{% endif %}">
+                                        {% if transaction.transaction_type == 'purchase' %}+{% else %}-{% endif %}{{ transaction.amount }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <a href="{{ url_for('market.transactions') }}" class="btn btn-outline-primary btn-sm w-100 mt-3">
+                        Tümünü Görüntüle
+                    </a>
+                    {% else %}
+                    <p class="text-muted text-center py-3">İşlem geçmişi bulunamadı.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

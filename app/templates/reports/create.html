@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Yeni Rapor Oluştur - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-plus-circle"></i> Yeni Rapor Oluştur</h4>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Bu işlem <strong>{{ credit_cost }} kredi</strong> kullanacaktır. 
+                        Mevcut bakiyeniz: <strong>{{ current_user.credits }} kredi</strong>
+                    </div>
+                    
+                    <form method="POST" action="{{ url_for('reports.create_report') }}" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Rapor Başlığı *</label>
+                            <input type="text" class="form-control" id="title" name="title" required 
+                                   minlength="3" maxlength="200" placeholder="Örn: Yapay Zeka ve Gelecek">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="prompt" class="form-label">Rapor İçeriği / Talimatlar *</label>
+                            <textarea class="form-control" id="prompt" name="prompt" rows="10" required
+                                      placeholder="Raporunuzun içeriğini detaylı olarak açıklayın. AI bu bilgilere göre raporunuzu oluşturacaktır.&#10;&#10;Örnek:&#10;- Yapay zekanın tarihçesi&#10;- Günümüzde kullanım alanları&#10;- Gelecekteki potansiyeli ve riskler&#10;- Sonuç ve öneriler"></textarea>
+                            <div class="form-text">Detaylı açıklama yaparsanız daha kaliteli rapor elde edersiniz.</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="reference_text" class="form-label">Referans Metin (Opsiyonel)</label>
+                            <textarea class="form-control" id="reference_text" name="reference_text" rows="6"
+                                      placeholder="Varsa referans olarak kullanmak istediğiniz metni buraya yapıştırın. AI bu metni referans alarak raporunuzu oluşturacaktır."></textarea>
+                            <div class="form-text">Referans metin eklerseniz AI bu bilgileri de kullanarak daha özelleştirilmiş rapor üretir.</div>
+                        </div>
+                        
+                        <!-- Dosya Yükleme -->
+                        <div class="mb-3">
+                            <label for="file_upload" class="form-label">Dosya Yükle (Opsiyonel)</label>
+                            <input type="file" class="form-control" id="file_upload" name="file_upload" 
+                                   accept=".pdf,.docx,.txt" onchange="handleFileUpload(this)">
+                            <div class="form-text">
+                                <i class="fas fa-info-circle"></i> PDF, DOCX veya TXT formatında dosya yükleyebilirsiniz. 
+                                Dosyadan metin çıkarılarak referans olarak kullanılacaktır.
+                            </div>
+                            <div id="file-info" class="mt-2 alert alert-info d-none">
+                                <i class="fas fa-file"></i> <span id="file-name"></span> 
+                                <button type="button" class="btn btn-sm btn-danger float-end" onclick="clearFile()">
+                                    <i class="fas fa-times"></i> Kaldır
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Ses Dosyası Yükleme -->
+                        <div class="mb-3">
+                            <label for="audio_upload" class="form-label">
+                                <i class="fas fa-microphone"></i> Ses Dosyası Yükle (Opsiyonel)
+                            </label>
+                            <input type="file" class="form-control" id="audio_upload" name="audio_upload" 
+                                   accept=".mp3,.wav,.m4a,.ogg,.webm" onchange="handleAudioUpload(this)">
+                            <div class="form-text">
+                                <i class="fas fa-info-circle"></i> MP3, WAV, M4A, OGG veya WEBM formatında ses dosyası yükleyebilirsiniz. 
+                                Ses dosyası otomatik olarak metne dönüştürülecek ve içerik alanına eklenecektir.
+                            </div>
+                            <div id="audio-info" class="mt-2 alert alert-success d-none">
+                                <i class="fas fa-file-audio"></i> <span id="audio-name"></span>
+                                <button type="button" class="btn btn-sm btn-danger float-end" onclick="clearAudio()">
+                                    <i class="fas fa-times"></i> Kaldır
+                                </button>
+                            </div>
+                            <div id="audio-processing" class="mt-2 alert alert-info d-none">
+                                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                Ses dosyası işleniyor, metin çevriliyor...
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="ai_model" class="form-label">AI Modeli</label>
+                            <select class="form-select" id="ai_model" name="ai_model">
+                                <option value="openai">OpenAI GPT-4 (Önerilen)</option>
+                                <option value="anthropic">Anthropic Claude</option>
+                                <option value="google">Google Gemini</option>
+                            </select>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-magic"></i> Raporu Oluştur ({{ credit_cost }} Kredi)
+                            </button>
+                            <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> İptal
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Kredi Paketleri - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="text-center mb-5">
+        <h2><i class="fas fa-shopping-cart"></i> Kredi Paketleri</h2>
+        <p class="lead text-muted">Raporlarınızı oluşturmak için kredi satın alın</p>
+    </div>
+    
+    {% if packages %}
+    <div class="row g-4 justify-content-center">
+        {% for package in packages %}
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100 shadow {% if package.is_featured %}border-primary{% endif %}">
+                {% if package.badge %}
+                <div class="card-header bg-primary text-white text-center">
+                    <strong>{{ package.badge }}</strong>
+                </div>
+                {% endif %}
+                <div class="card-body text-center">
+                    <h4 class="card-title">{{ package.name }}</h4>
+                    <p class="text-muted">{{ package.description }}</p>
+                    <div class="my-4">
+                        <h2 class="display-4">{{ package.price|currency }}</h2>
+                        <p class="text-muted">{{ package.credits }} Kredi</p>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">
+                            Rapor Başına: {{ (package.price / package.credits)|round(2) }} TL
+                        </small>
+                    </div>
+                    <a href="{{ url_for('market.buy_package', package_id=package.id) }}" 
+                       class="btn btn-{% if package.is_featured %}primary{% else %}outline-primary{% endif %} w-100">
+                        <i class="fas fa-shopping-cart"></i> Satın Al
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-warning text-center">
+        <i class="fas fa-exclamation-triangle"></i> Şu anda aktif paket bulunmamaktadır.
+    </div>
+    {% endif %}
+    
+    <div class="text-center mt-5">
+        <p class="text-muted">
+            <i class="fas fa-shield-alt"></i> Güvenli ödeme ile kredi satın alın. 
+            <i class="fas fa-credit-card"></i> Tüm kredi kartları kabul edilir.
+        </p>
+    </div>
+</div>
+{% endblock %}

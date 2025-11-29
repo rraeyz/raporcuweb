@@ -1,0 +1,44 @@
+# Flask ve temel bağımlılıklar
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+Flask-WTF==1.2.1
+Flask-Mail==0.9.1
+Flask-Migrate==4.0.5
+Flask-Limiter==3.5.0
+Werkzeug==3.0.1
+WTForms==3.1.1
+SQLAlchemy==2.0.23
+
+# Form validasyonu
+email-validator==2.1.0
+
+# Güvenlik
+bcrypt==4.1.1
+cryptography==41.0.7
+
+# AI API'leri
+openai==1.3.7
+anthropic==0.7.7
+google-generativeai==0.3.1
+
+# PDF ve Doküman işleme
+reportlab==4.0.7
+PyPDF2==3.0.1
+python-docx==1.1.0
+Pillow>=10.0.0
+markdown==3.5.1
+
+# Ses işleme (FFmpeg gerektirmez)
+SpeechRecognition==3.12.0
+openai-whisper==20240930
+
+# HTTP istekleri
+requests==2.31.0
+
+# Yardımcı kütüphaneler
+python-dotenv==1.0.0
+python-dateutil==2.8.2
+
+# Production sunucusu
+gunicorn==21.2.0

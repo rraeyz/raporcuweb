@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Promosyon Kodları - Admin - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0"><i class="fas fa-tags"></i> Promosyon Kodları</h2>
+        </div>
+        <div>
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary me-2">
+                <i class="fas fa-arrow-left"></i> Admin Panel
+            </a>
+            <a href="{{ url_for('admin.create_promo_code') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Yeni Kod
+        </a>
+    </div>
+    
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Kod</th>
+                            <th>Açıklama</th>
+                            <th>İndirim</th>
+                            <th>Kullanım</th>
+                            <th>Geçerlilik</th>
+                            <th>Durum</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for code in codes %}
+                        <tr>
+                            <td><code>{{ code.code }}</code></td>
+                            <td>{{ code.description }}</td>
+                            <td>
+                                {% if code.discount_type == 'percentage' %}
+                                    %{{ code.discount_value }}
+                                {% elif code.discount_type == 'fixed' %}
+                                    {{ code.discount_value }} TL
+                                {% else %}
+                                    +{{ code.discount_value }} Kr
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ code.current_uses }}
+                                {% if code.max_uses %} / {{ code.max_uses }}{% else %} / ∞{% endif %}
+                            </td>
+                            <td>
+                                {% if code.valid_until %}
+                                    {{ code.valid_until|datetime('%d.%m.%Y') }}
+                                {% else %}
+                                    Süresiz
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-{% if code.is_active %}success{% else %}danger{% endif %}">
+                                    {% if code.is_active %}Aktif{% else %}Pasif{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <form method="POST" action="{{ url_for('admin.delete_promo_code', code_id=code.id) }}" 
+                                      style="display:inline;" onsubmit="return confirm('Kodu silmek istediğinizden emin misiniz?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

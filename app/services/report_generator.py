@@ -4,6 +4,8 @@ from datetime import datetime
 from flask import current_app
 import re
 import traceback
+import base64
+from io import BytesIO
 
 try:
     from weasyprint import HTML, CSS
@@ -11,6 +13,20 @@ try:
 except ImportError as e:
     WEASYPRINT_AVAILABLE = False
     print(f"WeasyPrint import hatası: {e}")
+
+try:
+    from latex2mathml.converter import convert as latex2mathml
+    LATEX2MATHML_AVAILABLE = True
+except ImportError:
+    LATEX2MATHML_AVAILABLE = False
+
+try:
+    import matplotlib
+    matplotlib.use('Agg')  # Headless mode
+    import matplotlib.pyplot as plt
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
 
 class ReportGenerator:
     """Rapor oluşturma ve dönüştürme servisi"""
@@ -20,10 +36,98 @@ class ReportGenerator:
         if not os.path.exists(self.upload_folder):
             os.makedirs(self.upload_folder)
     
-    def markdown_to_html(self, markdown_text):
-        """Markdown'u HTML'e çevir - tam özellik desteği"""
+    def process_latex_for_word(self, text):
+        """LaTeX formüllerini Word için MathML'e çevir"""
+        if not LATEX2MATHML_AVAILABLE:
+            return text
+        
+        try:
+            # Inline math: $...$ 
+            def replace_inline(match):
+                latex = match.group(1).strip()
+                try:
+                    mathml = latex2mathml(latex)
+                    return f'<span class="math">{mathml}</span>'
+                except:
+                    return match.group(0)
+            
+            text = re.sub(r'\$([^$]+)\$', replace_inline, text)
+            
+            # Display math: $$...$$ 
+            def replace_display(match):
+                latex = match.group(1).strip()
+                try:
+                    mathml = latex2mathml(latex)
+                    return f'<div class="math-display" style="text-align: center; margin: 15px 0;">{mathml}</div>'
+                except:
+                    return match.group(0)
+            
+            text = re.sub(r'\$\$([^$]+)\$\$', replace_display, text)
+            
+            return text
+        except Exception as e:
+            current_app.logger.error(f'LaTeX işleme hatası: {str(e)}')
+            return text
+    
+    def process_latex_for_pdf(self, text):
+        """LaTeX formüllerini PDF için görsel olarak render et"""
+        if not MATPLOTLIB_AVAILABLE:
+            return text
+        
+        try:
+            # Inline math: $...$ 
+            def replace_inline(match):
+                latex = match.group(1).strip()
+                try:
+                    # Matplotlib ile render
+                    fig = plt.figure(figsize=(0.1, 0.1))
+                    fig.text(0, 0, f'${latex}$', fontsize=12)
+                    
+                    buf = BytesIO()
+                    plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', transparent=True)
+                    plt.close(fig)
+                    
+                    img_data = base64.b64encode(buf.getvalue()).decode()
+                    return f'<img src="data:image/png;base64,{img_data}" style="vertical-align: middle;" alt="{latex}"/>'
+                except:
+                    return f'<code>{match.group(0)}</code>'
+            
+            text = re.sub(r'\$([^$]+)\$', replace_inline, text)
+            
+            # Display math: $$...$$
+            def replace_display(match):
+                latex = match.group(1).strip()
+                try:
+                    fig = plt.figure(figsize=(0.1, 0.1))
+                    fig.text(0.5, 0.5, f'${latex}$', fontsize=14, ha='center')
+                    
+                    buf = BytesIO()
+                    plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', transparent=True)
+                    plt.close(fig)
+                    
+                    img_data = base64.b64encode(buf.getvalue()).decode()
+                    return f'<div style="text-align: center; margin: 15px 0;"><img src="data:image/png;base64,{img_data}" alt="{latex}"/></div>'
+                except:
+                    return f'<div style="text-align: center;"><code>{match.group(0)}</code></div>'
+            
+            text = re.sub(r'\$\$([^$]+)\$\$', replace_display, text)
+            
+            return text
+        except Exception as e:
+            current_app.logger.error(f'LaTeX render hatası: {str(e)}')
+            return text
+    
+    def markdown_to_html(self, markdown_text, for_pdf=False):
+        """Markdown'u HTML'e çevir - LaTeX desteği ile"""
+        # LaTeX formüllerini işle
+        if for_pdf:
+            processed_text = self.process_latex_for_pdf(markdown_text)
+        else:
+            processed_text = self.process_latex_for_word(markdown_text)
+        
+        # Markdown'u HTML'e çevir
         html = markdown2.markdown(
-            markdown_text,
+            processed_text,
             extras=['tables', 'fenced-code-blocks', 'break-on-newline', 'cuddled-lists', 'code-friendly', 'strike', 'task_list']
         )
         return html
@@ -40,8 +144,8 @@ class ReportGenerator:
             filename = f'rapor_{username}_{timestamp}.pdf'
             filepath = os.path.join(self.upload_folder, filename)
             
-            # Markdown'u HTML'e çevir
-            html_content = self.markdown_to_html(content)
+            # Markdown'u HTML'e çevir (PDF için LaTeX render)
+            html_content = self.markdown_to_html(content, for_pdf=True)
             
             # Profesyonel PDF CSS stili
             css_style = """
@@ -253,8 +357,8 @@ class ReportGenerator:
                 filename = f'rapor_{username}_{timestamp}.docx'
                 filepath = os.path.join(self.upload_folder, filename)
                 
-                # Markdown'u HTML'e çevir
-                html_content = self.markdown_to_html(content)
+                # Markdown'u HTML'e çevir (Word için MathML)
+                html_content = self.markdown_to_html(content, for_pdf=False)
                 
                 # Word belgesi oluştur
                 doc = Document()

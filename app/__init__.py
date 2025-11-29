@@ -64,6 +64,11 @@ def create_app(config_name='development'):
     
     # Veritabanı tablolarını oluştur
     with app.app_context():
+        # TÜM modelleri import et ki db.create_all() çalışsın
+        from app.models import (
+            User, Report, Transaction, CreditPackage, 
+            PromoCode, Announcement, Settings
+        )
         db.create_all()
         init_default_data()
     

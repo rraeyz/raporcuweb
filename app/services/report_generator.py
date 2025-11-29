@@ -241,11 +241,11 @@ class ReportGenerator:
             return None, None, f'PDF oluşturma hatası: {str(e)}'
     
     def generate_word(self, content, title, username):
-        """Markdown içeriğinden Word belgesi oluştur - html2docx ile"""
+        """Markdown içeriğinden Word belgesi oluştur - gelişmiş HTML parsing ile"""
         try:
-            # Önce html2docx ile dene
+            # html2docx ile dene, başarısız olursa fallback kullan
             try:
-                from html2docx import html2docx
+                from htmldocx import HtmlToDocx
                 from docx import Document
                 
                 # Dosya adı oluştur
@@ -256,40 +256,46 @@ class ReportGenerator:
                 # Markdown'u HTML'e çevir
                 html_content = self.markdown_to_html(content)
                 
-                # HTML wrapper ile tam belge oluştur
+                # Word belgesi oluştur
+                doc = Document()
+                
+                # Başlık ekle
+                from docx.shared import Pt, RGBColor
+                from docx.enum.text import WD_ALIGN_PARAGRAPH
+                
+                title_paragraph = doc.add_heading(title, 0)
+                title_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                
+                # Tarih bilgisi ekle
                 date_str = datetime.now().strftime('%d.%m.%Y %H:%M')
-                full_html = f"""
-                <!DOCTYPE html>
-                <html lang="tr">
-                <head>
-                    <meta charset="UTF-8">
-                    <title>{title}</title>
-                </head>
-                <body>
-                    <h1 style="text-align: center;">{title}</h1>
-                    <p style="text-align: center; color: #777; font-size: 10pt;">Oluşturulma Tarihi: {date_str}</p>
-                    <hr>
-                    {html_content}
-                </body>
-                </html>
-                """
+                date_paragraph = doc.add_paragraph(f'Oluşturulma Tarihi: {date_str}')
+                date_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                date_paragraph.runs[0].font.size = Pt(9)
+                date_paragraph.runs[0].font.color.rgb = RGBColor(128, 128, 128)
                 
-                # html2docx ile dönüştür
-                # html2docx byte buffer döndürür, onu dosyaya yazıyoruz
-                buf = html2docx(full_html, title=title)
+                # Ayırıcı çizgi
+                doc.add_paragraph('_' * 50)
                 
-                # Buffer'ı dosyaya yaz
-                with open(filepath, 'wb') as f:
-                    f.write(buf.getvalue())
+                # HTML'i Word'e dönüştür
+                new_parser = HtmlToDocx()
+                new_parser.add_html_to_document(html_content, doc)
+                
+                # Belgeyi kaydet
+                doc.save(filepath)
                 
                 # Dosya boyutunu al
                 file_size = os.path.getsize(filepath)
                 
+                # Dosyanın gerçekten içerik içerdiğini kontrol et
+                if file_size < 5000:  # Çok küçükse sorun var
+                    current_app.logger.warning(f'htmldocx küçük dosya oluşturdu ({file_size} bytes), fallback kullanılacak')
+                    raise Exception("htmldocx küçük dosya oluşturdu")
+                
                 return filepath, file_size, None
                 
-            except ImportError:
-                current_app.logger.warning('html2docx yok, fallback yöntem kullanılıyor')
-                # Fallback: eski yöntem
+            except (ImportError, Exception) as e:
+                current_app.logger.warning(f'htmldocx başarısız ({str(e)}), fallback yöntem kullanılıyor')
+                # Fallback: geliştirilmiş markdown parsing
                 from docx import Document
                 from docx.shared import Pt, RGBColor, Inches
                 from docx.enum.text import WD_ALIGN_PARAGRAPH

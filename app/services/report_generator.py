@@ -3,6 +3,7 @@ import markdown2
 from datetime import datetime
 from flask import current_app
 import re
+import traceback
 
 try:
     from weasyprint import HTML, CSS
@@ -224,8 +225,10 @@ class ReportGenerator:
             </html>
             """
             
-            # PDF oluştur
-            HTML(string=html_template).write_pdf(filepath)
+            # PDF oluştur - CSS objesi ile
+            css_obj = CSS(string=css_style)
+            html_obj = HTML(string=html_template)
+            html_obj.write_pdf(target=filepath, stylesheets=[css_obj])
             
             # Dosya boyutunu al
             file_size = os.path.getsize(filepath)
@@ -234,83 +237,129 @@ class ReportGenerator:
             
         except Exception as e:
             current_app.logger.error(f'PDF oluşturma hatası: {str(e)}')
+            current_app.logger.error(traceback.format_exc())
             return None, None, f'PDF oluşturma hatası: {str(e)}'
     
     def generate_word(self, content, title, username):
-        """Markdown içeriğinden Word belgesi oluştur"""
+        """Markdown içeriğinden Word belgesi oluştur - html2docx ile"""
         try:
-            from docx import Document
-            from docx.shared import Pt, RGBColor, Inches
-            from docx.enum.text import WD_ALIGN_PARAGRAPH
-            
-            # Dosya adı oluştur
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f'rapor_{username}_{timestamp}.docx'
-            filepath = os.path.join(self.upload_folder, filename)
-            
-            # Word belgesi oluştur
-            doc = Document()
-            
-            # Başlık ekle
-            title_paragraph = doc.add_heading(title, 0)
-            title_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            
-            # Tarih bilgisi ekle
-            date_str = datetime.now().strftime('%d.%m.%Y %H:%M')
-            date_paragraph = doc.add_paragraph(f'Oluşturulma Tarihi: {date_str}')
-            date_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            date_paragraph.runs[0].font.size = Pt(9)
-            date_paragraph.runs[0].font.color.rgb = RGBColor(128, 128, 128)
-            
-            # Ayırıcı çizgi
-            doc.add_paragraph('_' * 50)
-            
-            # Markdown içeriğini satır satır işle
-            lines = content.split('\n')
-            i = 0
-            while i < len(lines):
-                line = lines[i].strip()
+            # Önce html2docx ile dene
+            try:
+                from html2docx import html2docx
+                from docx import Document
                 
-                if not line:
+                # Dosya adı oluştur
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f'rapor_{username}_{timestamp}.docx'
+                filepath = os.path.join(self.upload_folder, filename)
+                
+                # Markdown'u HTML'e çevir
+                html_content = self.markdown_to_html(content)
+                
+                # HTML wrapper ile tam belge oluştur
+                date_str = datetime.now().strftime('%d.%m.%Y %H:%M')
+                full_html = f"""
+                <!DOCTYPE html>
+                <html lang="tr">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>{title}</title>
+                </head>
+                <body>
+                    <h1 style="text-align: center;">{title}</h1>
+                    <p style="text-align: center; color: #777; font-size: 10pt;">Oluşturulma Tarihi: {date_str}</p>
+                    <hr>
+                    {html_content}
+                </body>
+                </html>
+                """
+                
+                # html2docx ile dönüştür
+                doc = Document()
+                html2docx(full_html, doc)
+                doc.save(filepath)
+                
+                # Dosya boyutunu al
+                file_size = os.path.getsize(filepath)
+                
+                return filepath, file_size, None
+                
+            except ImportError:
+                current_app.logger.warning('html2docx yok, fallback yöntem kullanılıyor')
+                # Fallback: eski yöntem
+                from docx import Document
+                from docx.shared import Pt, RGBColor, Inches
+                from docx.enum.text import WD_ALIGN_PARAGRAPH
+                
+                # Dosya adı oluştur
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f'rapor_{username}_{timestamp}.docx'
+                filepath = os.path.join(self.upload_folder, filename)
+                
+                # Word belgesi oluştur
+                doc = Document()
+                
+                # Başlık ekle
+                title_paragraph = doc.add_heading(title, 0)
+                title_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                
+                # Tarih bilgisi ekle
+                date_str = datetime.now().strftime('%d.%m.%Y %H:%M')
+                date_paragraph = doc.add_paragraph(f'Oluşturulma Tarihi: {date_str}')
+                date_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                date_paragraph.runs[0].font.size = Pt(9)
+                date_paragraph.runs[0].font.color.rgb = RGBColor(128, 128, 128)
+                
+                # Ayırıcı çizgi
+                doc.add_paragraph('_' * 50)
+                
+                # Markdown içeriğini satır satır işle
+                lines = content.split('\n')
+                i = 0
+                while i < len(lines):
+                    line = lines[i].strip()
+                    
+                    if not line:
+                        i += 1
+                        continue
+                    
+                    # Başlıklar
+                    if line.startswith('# '):
+                        doc.add_heading(line[2:], level=1)
+                    elif line.startswith('## '):
+                        doc.add_heading(line[3:], level=2)
+                    elif line.startswith('### '):
+                        doc.add_heading(line[4:], level=3)
+                    elif line.startswith('#### '):
+                        doc.add_heading(line[5:], level=4)
+                    # Liste öğeleri
+                    elif line.startswith('- ') or line.startswith('* '):
+                        doc.add_paragraph(line[2:], style='List Bullet')
+                    elif line.startswith(tuple(f'{j}. ' for j in range(1, 100))):
+                        doc.add_paragraph(line.split('. ', 1)[1], style='List Number')
+                    # Normal paragraf
+                    else:
+                        # Kalın metin (**text**) işle
+                        paragraph = doc.add_paragraph()
+                        parts = line.split('**')
+                        for idx, part in enumerate(parts):
+                            run = paragraph.add_run(part)
+                            if idx % 2 == 1:  # Kalın yapılacak kısımlar
+                                run.bold = True
+                    
                     i += 1
-                    continue
                 
-                # Başlıklar
-                if line.startswith('# '):
-                    doc.add_heading(line[2:], level=1)
-                elif line.startswith('## '):
-                    doc.add_heading(line[3:], level=2)
-                elif line.startswith('### '):
-                    doc.add_heading(line[4:], level=3)
-                elif line.startswith('#### '):
-                    doc.add_heading(line[5:], level=4)
-                # Liste öğeleri
-                elif line.startswith('- ') or line.startswith('* '):
-                    doc.add_paragraph(line[2:], style='List Bullet')
-                elif line.startswith(tuple(f'{j}. ' for j in range(1, 100))):
-                    doc.add_paragraph(line.split('. ', 1)[1], style='List Number')
-                # Normal paragraf
-                else:
-                    # Kalın metin (**text**) işle
-                    paragraph = doc.add_paragraph()
-                    parts = line.split('**')
-                    for idx, part in enumerate(parts):
-                        run = paragraph.add_run(part)
-                        if idx % 2 == 1:  # Kalın yapılacak kısımlar
-                            run.bold = True
+                # Belgeyi kaydet
+                doc.save(filepath)
                 
-                i += 1
-            
-            # Belgeyi kaydet
-            doc.save(filepath)
-            
-            # Dosya boyutunu al
-            file_size = os.path.getsize(filepath)
-            
-            return filepath, file_size, None
+                # Dosya boyutunu al
+                file_size = os.path.getsize(filepath)
+                
+                return filepath, file_size, None
             
         except Exception as e:
             current_app.logger.error(f'Word oluşturma hatası: {str(e)}')
+            current_app.logger.error(traceback.format_exc())
             return None, None, f'Word oluşturma hatası: {str(e)}'
     
     def get_file_path(self, filename):

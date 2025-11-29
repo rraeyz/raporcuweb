@@ -100,7 +100,8 @@ def create_report():
             additional_context.append(f"**Ses Kaydı Transkripti:**\n{audio_text}")
         
         if additional_context:
-            full_prompt = f"{prompt}\n\n{'\\n\\n'.join(additional_context)}"
+            separator = '\n\n'
+            full_prompt = f"{prompt}\n\n{separator.join(additional_context)}"
         
         # AI ile rapor oluştur
         ai_service = AIService(model=ai_model)

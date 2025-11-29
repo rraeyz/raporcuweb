@@ -45,7 +45,24 @@ class ReportGenerator:
                 
                 if for_pdf and MATPLOTLIB_AVAILABLE:
                     try:
-                        # Matplotlib ile LaTeX render
+                        # Matplotlib ile LaTeX render - metin boyutuna uygun büyüktük
+                        fig, ax = plt.subplots(figsize=(10, 2))
+                        ax.text(0.5, 0.5, f'${latex}$', fontsize=32, ha='center', va='center', transform=ax.transAxes)
+                        ax.axis('off')
+                        
+                        buf = BytesIO()
+                        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', transparent=True, pad_inches=0.15)
+                        plt.close(fig)
+                        
+                        img_data = base64.b64encode(buf.getvalue()).decode()
+                        return f'<div style="text-align: center; margin: 20px 0;"><img src="data:image/png;base64,{img_data}" alt="{latex}" style="max-width: 90%; height: auto;"/></div>'
+                    except Exception as e:
+                        current_app.logger.warning(f'PDF LaTeX render hatası: {e}')
+                        return f'<div style="text-align: center;"><code>$${latex}$$</code></div>'
+                
+                elif not for_pdf and MATPLOTLIB_AVAILABLE:
+                    # Word için de matplotlib PNG kullan (MathML제대로 çalışmıyor)
+                    try:
                         fig, ax = plt.subplots(figsize=(6, 1))
                         ax.text(0.5, 0.5, f'${latex}$', fontsize=16, ha='center', va='center', transform=ax.transAxes)
                         ax.axis('off')
@@ -57,15 +74,7 @@ class ReportGenerator:
                         img_data = base64.b64encode(buf.getvalue()).decode()
                         return f'<div style="text-align: center; margin: 15px 0;"><img src="data:image/png;base64,{img_data}" alt="Math: {latex}" style="max-width: 100%;"/></div>'
                     except Exception as e:
-                        current_app.logger.warning(f'PDF LaTeX render hatası: {e}')
-                        return f'<div style="text-align: center;"><code>$${latex}$$</code></div>'
-                
-                elif not for_pdf and LATEX2MATHML_AVAILABLE:
-                    try:
-                        mathml = latex2mathml(latex)
-                        return f'<div class="math-display" style="text-align: center; margin: 15px 0;">{mathml}</div>'
-                    except Exception as e:
-                        current_app.logger.warning(f'Word MathML hatası: {e}')
+                        current_app.logger.warning(f'Word LaTeX render hatası: {e}')
                         return f'<div style="text-align: center;"><code>$${latex}$$</code></div>'
                 
                 return match.group(0)
@@ -78,27 +87,36 @@ class ReportGenerator:
                 
                 if for_pdf and MATPLOTLIB_AVAILABLE:
                     try:
-                        # Matplotlib ile inline LaTeX render
-                        fig, ax = plt.subplots(figsize=(3, 0.6))
-                        ax.text(0.5, 0.5, f'${latex}$', fontsize=13, ha='center', va='center', transform=ax.transAxes)
+                        # Matplotlib ile inline LaTeX render - metin boyutuna uygun
+                        fig, ax = plt.subplots(figsize=(5, 1))
+                        ax.text(0.5, 0.5, f'${latex}$', fontsize=22, ha='center', va='center', transform=ax.transAxes)
                         ax.axis('off')
                         
                         buf = BytesIO()
-                        plt.savefig(buf, format='png', dpi=200, bbox_inches='tight', transparent=True, pad_inches=0.05)
+                        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', transparent=True, pad_inches=0.08)
                         plt.close(fig)
                         
                         img_data = base64.b64encode(buf.getvalue()).decode()
-                        return f'<img src="data:image/png;base64,{img_data}" style="vertical-align: middle; max-height: 1.8em;" alt="Math: {latex}"/>'
+                        return f'<img src="data:image/png;base64,{img_data}" style="vertical-align: middle; height: 1.4em; margin: 0 2px;" alt="{latex}"/>'
                     except Exception as e:
                         current_app.logger.warning(f'PDF LaTeX render hatası: {e}')
                         return f'<code>${latex}$</code>'
                 
-                elif not for_pdf and LATEX2MATHML_AVAILABLE:
+                elif not for_pdf and MATPLOTLIB_AVAILABLE:
+                    # Word için de matplotlib PNG kullan (MathML제대로 çalışmıyor)
                     try:
-                        mathml = latex2mathml(latex)
-                        return f'<span class="math">{mathml}</span>'
+                        fig, ax = plt.subplots(figsize=(5, 1))
+                        ax.text(0.5, 0.5, f'${latex}$', fontsize=22, ha='center', va='center', transform=ax.transAxes)
+                        ax.axis('off')
+                        
+                        buf = BytesIO()
+                        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', transparent=True, pad_inches=0.08)
+                        plt.close(fig)
+                        
+                        img_data = base64.b64encode(buf.getvalue()).decode()
+                        return f'<img src="data:image/png;base64,{img_data}" style="vertical-align: middle; height: 1.4em; margin: 0 2px;" alt="{latex}"/>'
                     except Exception as e:
-                        current_app.logger.warning(f'Word MathML hatası: {e}')
+                        current_app.logger.warning(f'Word LaTeX render hatası: {e}')
                         return f'<code>${latex}$</code>'
                 
                 return match.group(0)
@@ -252,12 +270,13 @@ class ReportGenerator:
                 
                 /* Listeler */
                 ul, ol {
-                    margin: 10px 0;
-                    padding-left: 25px;
+                    margin: 12px 0;
+                    padding-left: 30px;
                 }
                 
                 li {
-                    margin-bottom: 6px;
+                    margin-bottom: 8px;
+                    line-height: 1.6;
                 }
                 
                 /* Kod blokları */

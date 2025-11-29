@@ -366,13 +366,15 @@ function clearRecording() {
 }
 
 function processAudioToText() {
-    const audioData = document.getElementById('audio_data').value;
-    const contentTextarea = document.getElementById('content');
+    const audioDataInput = document.getElementById('audio_data');
+    const contentTextarea = document.getElementById('prompt');
     
-    if (!audioData) {
+    if (!audioDataInput || !audioDataInput.value) {
         showToast('Ses kaydı bulunamadı!', 'danger');
         return;
     }
+    
+    const audioData = audioDataInput.value;
     
     // Loading durumu göster
     const processBtn = event.target;

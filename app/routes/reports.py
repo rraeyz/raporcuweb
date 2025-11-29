@@ -135,6 +135,11 @@ def create_report():
             separator = '\n\n'
             full_prompt = f"{prompt}\n\n{separator.join(additional_context)}"
         
+        # API anahtarlarını config'e aktar
+        current_app.config['OPENAI_API_KEY'] = settings.openai_api_key
+        current_app.config['ANTHROPIC_API_KEY'] = settings.anthropic_api_key
+        current_app.config['GOOGLE_API_KEY'] = settings.google_api_key
+        
         # AI ile rapor oluştur
         ai_service = AIService(model=ai_model)
         content, error = ai_service.generate_report(full_prompt, title)

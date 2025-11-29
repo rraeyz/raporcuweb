@@ -36,100 +36,89 @@ class ReportGenerator:
         if not os.path.exists(self.upload_folder):
             os.makedirs(self.upload_folder)
     
-    def process_latex_for_word(self, text):
-        """LaTeX formüllerini Word için MathML'e çevir"""
-        if not LATEX2MATHML_AVAILABLE:
-            return text
-        
+    def process_latex_in_html(self, html, for_pdf=False):
+        """HTML içindeki LaTeX formüllerini işle (markdown işleminden SONRA)"""
         try:
-            # Inline math: $...$ 
-            def replace_inline(match):
-                latex = match.group(1).strip()
-                try:
-                    mathml = latex2mathml(latex)
-                    return f'<span class="math">{mathml}</span>'
-                except:
-                    return match.group(0)
-            
-            text = re.sub(r'\$([^$]+)\$', replace_inline, text)
-            
-            # Display math: $$...$$ 
+            # Önce display math ($$...$$) - daha uzun pattern önce
             def replace_display(match):
                 latex = match.group(1).strip()
-                try:
-                    mathml = latex2mathml(latex)
-                    return f'<div class="math-display" style="text-align: center; margin: 15px 0;">{mathml}</div>'
-                except:
-                    return match.group(0)
+                
+                if for_pdf and MATPLOTLIB_AVAILABLE:
+                    try:
+                        fig = plt.figure(figsize=(4, 1))
+                        fig.text(0.5, 0.5, f'${latex}$', fontsize=14, ha='center', va='center')
+                        
+                        buf = BytesIO()
+                        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', transparent=True, pad_inches=0.1)
+                        plt.close(fig)
+                        
+                        img_data = base64.b64encode(buf.getvalue()).decode()
+                        return f'<div style="text-align: center; margin: 15px 0;"><img src="data:image/png;base64,{img_data}" alt="Math: {latex}" style="max-width: 100%;"/></div>'
+                    except Exception as e:
+                        current_app.logger.warning(f'PDF LaTeX render hatası: {e}')
+                        return f'<div style="text-align: center;"><code>$${latex}$$</code></div>'
+                
+                elif not for_pdf and LATEX2MATHML_AVAILABLE:
+                    try:
+                        mathml = latex2mathml(latex)
+                        return f'<div class="math-display" style="text-align: center; margin: 15px 0;">{mathml}</div>'
+                    except Exception as e:
+                        current_app.logger.warning(f'Word MathML hatası: {e}')
+                        return f'<div style="text-align: center;"><code>$${latex}$$</code></div>'
+                
+                return match.group(0)
             
-            text = re.sub(r'\$\$([^$]+)\$\$', replace_display, text)
+            html = re.sub(r'\$\$(.+?)\$\$', replace_display, html, flags=re.DOTALL)
             
-            return text
+            # Sonra inline math ($...$) - daha kısa pattern
+            def replace_inline(match):
+                latex = match.group(1).strip()
+                
+                if for_pdf and MATPLOTLIB_AVAILABLE:
+                    try:
+                        fig = plt.figure(figsize=(2, 0.5))
+                        fig.text(0.5, 0.5, f'${latex}$', fontsize=12, ha='center', va='center')
+                        
+                        buf = BytesIO()
+                        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', transparent=True, pad_inches=0.05)
+                        plt.close(fig)
+                        
+                        img_data = base64.b64encode(buf.getvalue()).decode()
+                        return f'<img src="data:image/png;base64,{img_data}" style="vertical-align: middle; max-height: 1.5em;" alt="Math: {latex}"/>'
+                    except Exception as e:
+                        current_app.logger.warning(f'PDF LaTeX render hatası: {e}')
+                        return f'<code>${latex}$</code>'
+                
+                elif not for_pdf and LATEX2MATHML_AVAILABLE:
+                    try:
+                        mathml = latex2mathml(latex)
+                        return f'<span class="math">{mathml}</span>'
+                    except Exception as e:
+                        current_app.logger.warning(f'Word MathML hatası: {e}')
+                        return f'<code>${latex}$</code>'
+                
+                return match.group(0)
+            
+            # Sadece metin içindeki $...$ işle (kod bloklarında değil)
+            html = re.sub(r'(?<!<code>)\$([^\$\n]+?)\$(?!</code>)', replace_inline, html)
+            
+            return html
         except Exception as e:
             current_app.logger.error(f'LaTeX işleme hatası: {str(e)}')
-            return text
-    
-    def process_latex_for_pdf(self, text):
-        """LaTeX formüllerini PDF için görsel olarak render et"""
-        if not MATPLOTLIB_AVAILABLE:
-            return text
-        
-        try:
-            # Inline math: $...$ 
-            def replace_inline(match):
-                latex = match.group(1).strip()
-                try:
-                    # Matplotlib ile render
-                    fig = plt.figure(figsize=(0.1, 0.1))
-                    fig.text(0, 0, f'${latex}$', fontsize=12)
-                    
-                    buf = BytesIO()
-                    plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', transparent=True)
-                    plt.close(fig)
-                    
-                    img_data = base64.b64encode(buf.getvalue()).decode()
-                    return f'<img src="data:image/png;base64,{img_data}" style="vertical-align: middle;" alt="{latex}"/>'
-                except:
-                    return f'<code>{match.group(0)}</code>'
-            
-            text = re.sub(r'\$([^$]+)\$', replace_inline, text)
-            
-            # Display math: $$...$$
-            def replace_display(match):
-                latex = match.group(1).strip()
-                try:
-                    fig = plt.figure(figsize=(0.1, 0.1))
-                    fig.text(0.5, 0.5, f'${latex}$', fontsize=14, ha='center')
-                    
-                    buf = BytesIO()
-                    plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', transparent=True)
-                    plt.close(fig)
-                    
-                    img_data = base64.b64encode(buf.getvalue()).decode()
-                    return f'<div style="text-align: center; margin: 15px 0;"><img src="data:image/png;base64,{img_data}" alt="{latex}"/></div>'
-                except:
-                    return f'<div style="text-align: center;"><code>{match.group(0)}</code></div>'
-            
-            text = re.sub(r'\$\$([^$]+)\$\$', replace_display, text)
-            
-            return text
-        except Exception as e:
-            current_app.logger.error(f'LaTeX render hatası: {str(e)}')
-            return text
+            current_app.logger.error(traceback.format_exc())
+            return html
     
     def markdown_to_html(self, markdown_text, for_pdf=False):
         """Markdown'u HTML'e çevir - LaTeX desteği ile"""
-        # LaTeX formüllerini işle
-        if for_pdf:
-            processed_text = self.process_latex_for_pdf(markdown_text)
-        else:
-            processed_text = self.process_latex_for_word(markdown_text)
-        
-        # Markdown'u HTML'e çevir
+        # Önce markdown'u HTML'e çevir
         html = markdown2.markdown(
-            processed_text,
+            markdown_text,
             extras=['tables', 'fenced-code-blocks', 'break-on-newline', 'cuddled-lists', 'code-friendly', 'strike', 'task_list']
         )
+        
+        # Sonra HTML içindeki LaTeX'i işle
+        html = self.process_latex_in_html(html, for_pdf=for_pdf)
+        
         return html
     
     def generate_pdf(self, content, title, username):

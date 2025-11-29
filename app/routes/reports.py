@@ -254,7 +254,7 @@ def process_audio():
         
         # Ses işleyici ile metne çevir
         audio_processor = AudioProcessor()
-        transcription = audio_processor.process_audio_file(audio_file)
+        transcription, error = audio_processor.process_audio_file(audio_file)
         
         if transcription:
             return jsonify({
@@ -262,9 +262,10 @@ def process_audio():
                 'text': transcription
             })
         else:
+            error_msg = error or 'Ses metne dönüştürülemedi. Lütfen daha net konuşmayı deneyin.'
             return jsonify({
                 'success': False,
-                'message': 'Ses metne dönüştürülemedi. Lütfen daha net konuşmayı deneyin.'
+                'message': error_msg
             }), 400
             
     except Exception as e:

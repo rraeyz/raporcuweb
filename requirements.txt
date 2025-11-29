@@ -33,8 +33,9 @@ WeasyPrint==60.1
 markdown2==2.4.12
 pymdown-extensions==10.7
 
-# Ses işleme (FFmpeg gerektirmez)
+# Ses işleme
 SpeechRecognition==3.12.0
+pydub==0.25.1
 
 # HTTP istekleri
 requests==2.31.0

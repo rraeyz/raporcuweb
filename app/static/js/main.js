@@ -370,7 +370,7 @@ function processAudioToText() {
     const contentTextarea = document.getElementById('content');
     
     if (!audioData) {
-        showToast('Ses kaydı bulunamadı!', 'error');
+        showToast('Ses kaydı bulunamadı!', 'danger');
         return;
     }
     
@@ -389,7 +389,12 @@ function processAudioToText() {
         },
         body: JSON.stringify({ audio_data: audioData })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => Promise.reject(err));
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             // Mevcut içeriğe ekle veya üzerine yaz
@@ -408,12 +413,13 @@ function processAudioToText() {
             contentTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
             contentTextarea.focus();
         } else {
-            showToast(data.message || 'Ses işlenirken hata oluştu', 'error');
+            showToast(data.message || 'Ses işlenirken hata oluştu', 'danger');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showToast('Ses işlenirken bir hata oluştu', 'error');
+        const errorMsg = error.message || 'Ses işlenirken bir hata oluştu';
+        showToast(errorMsg, 'danger');
     })
     .finally(() => {
         processBtn.disabled = false;

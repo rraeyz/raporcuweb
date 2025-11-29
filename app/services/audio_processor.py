@@ -8,6 +8,12 @@ import logging
 from flask import current_app
 import speech_recognition as sr
 
+try:
+    from pydub import AudioSegment
+    PYDUB_AVAILABLE = True
+except ImportError:
+    PYDUB_AVAILABLE = False
+
 # Whisper hosting'de sorunlu - sadece Google Speech API kullanıyoruz
 WHISPER_AVAILABLE = False
 logger = logging.getLogger(__name__)
@@ -107,8 +113,35 @@ class AudioProcessor:
                     pass
     
     def _optimize_audio(self, file_path, temp_dir):
-        """SpeechRecognition kendi optimize ediyor"""
-        return file_path
+        """
+        WebM/MP3/M4A dosyasını WAV'a çevir (SpeechRecognition için gerekli)
+        """
+        file_ext = os.path.splitext(file_path)[1].lower()
+        
+        # Zaten WAV/FLAC/AIFF ise değiştirme
+        if file_ext in ['.wav', '.flac', '.aiff']:
+            return file_path
+        
+        # Pydub yoksa dönüşüm yapılamaz
+        if not PYDUB_AVAILABLE:
+            logger.error("pydub kütüphanesi bulunamadı, WebM dönüşümü yapılamıyor")
+            return None
+        
+        try:
+            # WebM/MP3/M4A → WAV dönüşümü
+            logger.info(f"{file_ext} dosyası WAV'a çevriliyor...")
+            audio = AudioSegment.from_file(file_path)
+            
+            # WAV olarak kaydet
+            wav_path = os.path.join(temp_dir, f"optimized_{os.path.basename(file_path)}.wav")
+            audio.export(wav_path, format="wav", parameters=["-ar", "16000", "-ac", "1"])
+            
+            logger.info(f"Dönüşüm başarılı: {wav_path}")
+            return wav_path
+            
+        except Exception as e:
+            logger.error(f"Ses dönüşüm hatası: {e}")
+            return None
     
     def _split_audio(self, file_path, temp_dir, chunk_length=30000):
         """Tek parça olarak işle (SpeechRecognition 1 dakika limit var ama yeterli)"""
@@ -119,28 +152,38 @@ class AudioProcessor:
         return None
     
     def _transcribe_with_google(self, file_path):
-        """Google Speech API ile ses tanıma"""
+        """Google Speech API ile ses tanıma - WAV/FLAC destekli"""
         try:
+            file_ext = os.path.splitext(file_path)[1].lower()
+            
+            # AudioFile sadece WAV, AIFF, FLAC destekler
+            if file_ext not in ['.wav', '.flac', '.aiff']:
+                logger.error(f"Format {file_ext} desteklenmiyor. SpeechRecognition sadece WAV/FLAC/AIFF kabul eder.")
+                return None
+            
             with sr.AudioFile(file_path) as source:
                 # Gürültü düzeyini ayarla
                 self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
                 audio_data = self.recognizer.record(source)
                 
-                # Türkçe dil kodları
-                lang_codes = ["tr-TR", "tr"]
-                
-                for lang_code in lang_codes:
-                    try:
-                        text = self.recognizer.recognize_google(audio_data, language=lang_code)
+            # Türkçe dil kodları
+            lang_codes = ["tr-TR", "tr"]
+            
+            for lang_code in lang_codes:
+                try:
+                    text = self.recognizer.recognize_google(audio_data, language=lang_code)
+                    if text and text.strip():
+                        logger.info(f"Ses başarıyla tanındı: {text[:50]}...")
                         return text.strip()
-                    except sr.UnknownValueError:
-                        continue
-                    except sr.RequestError as e:
-                        print(f"Google API hatası: {e}")
-                        break
-                
-                return None
-                
+                except sr.UnknownValueError:
+                    logger.warning(f"Ses tanınamadı: {lang_code}")
+                    continue
+                except sr.RequestError as e:
+                    logger.error(f"Google API hatası: {e}")
+                    break
+            
+            return None
+            
         except Exception as e:
-            print(f"Google Speech hatası: {e}")
+            logger.error(f"Google Speech hatası: {e}")
             return None

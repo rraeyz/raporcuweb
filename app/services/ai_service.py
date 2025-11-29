@@ -110,7 +110,7 @@ class AIService:
                 return None, 'Google API anahtarı yapılandırılmamış.'
             
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-pro')
+            model = genai.GenerativeModel('gemini-2.5-flash')
             
             system_prompt = """Sen profesyonel bir rapor yazarısın. SADECE rapor içeriğini üret, ekstra konuşma yapma.
             

@@ -53,7 +53,9 @@ class ProductionConfig(Config):
     DEBUG = False
     TESTING = False
     SESSION_COOKIE_SECURE = True
-    WTF_CSRF_SSL_STRICT = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    WTF_CSRF_SSL_STRICT = False  # Render için devre dışı
+    WTF_CSRF_TIME_LIMIT = None
 
 config = {
     'development': DevelopmentConfig,

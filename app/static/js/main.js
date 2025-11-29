@@ -260,6 +260,111 @@ const storage = {
     }
 };
 
+// Audio Recording
+let mediaRecorder;
+let audioChunks = [];
+let recordingStartTime;
+let timerInterval;
+
+// Toggle between record and upload modes
+document.addEventListener('DOMContentLoaded', function() {
+    const recordOption = document.getElementById('audio_record');
+    const fileOption = document.getElementById('audio_file');
+    const recordingSection = document.getElementById('recording-section');
+    const uploadSection = document.getElementById('upload-section');
+    
+    if (recordOption && fileOption) {
+        recordOption.addEventListener('change', function() {
+            if (recordingSection) recordingSection.classList.remove('d-none');
+            if (uploadSection) uploadSection.classList.add('d-none');
+        });
+        
+        fileOption.addEventListener('change', function() {
+            if (recordingSection) recordingSection.classList.add('d-none');
+            if (uploadSection) uploadSection.classList.remove('d-none');
+        });
+    }
+});
+
+async function startRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        
+        mediaRecorder.ondataavailable = (event) => {
+            audioChunks.push(event.data);
+        };
+        
+        mediaRecorder.onstop = () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audioPlayer = document.getElementById('audio-player');
+            audioPlayer.src = audioUrl;
+            
+            // Convert to base64 for form submission
+            const reader = new FileReader();
+            reader.readAsDataURL(audioBlob);
+            reader.onloadend = () => {
+                document.getElementById('audio_data').value = reader.result;
+            };
+            
+            // Show audio preview
+            document.getElementById('audio-preview').classList.remove('d-none');
+            
+            // Stop all tracks
+            stream.getTracks().forEach(track => track.stop());
+        };
+        
+        mediaRecorder.start();
+        recordingStartTime = Date.now();
+        
+        // Update UI
+        document.getElementById('start-record-btn').classList.add('d-none');
+        document.getElementById('stop-record-btn').classList.remove('d-none');
+        document.getElementById('recording-timer').classList.remove('d-none');
+        
+        // Start timer
+        timerInterval = setInterval(updateTimer, 1000);
+        
+        showToast('Kayıt başladı!', 'success');
+    } catch (err) {
+        showToast('Mikrofon erişimi reddedildi: ' + err.message, 'danger');
+    }
+}
+
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        clearInterval(timerInterval);
+        
+        // Update UI
+        document.getElementById('start-record-btn').classList.remove('d-none');
+        document.getElementById('stop-record-btn').classList.add('d-none');
+        document.getElementById('recording-timer').classList.add('d-none');
+        
+        showToast('Kayıt tamamlandı!', 'success');
+    }
+}
+
+function updateTimer() {
+    const elapsed = Date.now() - recordingStartTime;
+    const minutes = Math.floor(elapsed / 60000);
+    const seconds = Math.floor((elapsed % 60000) / 1000);
+    document.getElementById('timer-display').textContent = 
+        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function clearRecording() {
+    if (confirm('Kaydı silmek istediğinizden emin misiniz?')) {
+        audioChunks = [];
+        document.getElementById('audio_data').value = '';
+        document.getElementById('audio-preview').classList.add('d-none');
+        document.getElementById('audio-player').src = '';
+        showToast('Kayıt silindi', 'info');
+    }
+}
+
 // Export functions for use in other scripts
 window.RaporcuWeb = {
     copyToClipboard,

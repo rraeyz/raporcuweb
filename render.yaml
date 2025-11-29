@@ -5,9 +5,11 @@ services:
     region: frankfurt
     plan: free
     buildCommand: pip install -r requirements.txt
-    preRunCommand: flask db upgrade
+    preRunCommand: FLASK_APP=run.py flask db upgrade
     startCommand: gunicorn run:app --workers 1 --threads 2 --timeout 120 --max-requests 100 --max-requests-jitter 10
     envVars:
+      - key: FLASK_APP
+        value: run.py
       - key: FLASK_ENV
         value: production
       - key: SECRET_KEY

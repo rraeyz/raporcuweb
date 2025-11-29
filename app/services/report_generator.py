@@ -45,11 +45,13 @@ class ReportGenerator:
                 
                 if for_pdf and MATPLOTLIB_AVAILABLE:
                     try:
-                        fig = plt.figure(figsize=(4, 1))
-                        fig.text(0.5, 0.5, f'${latex}$', fontsize=14, ha='center', va='center')
+                        # Matplotlib ile LaTeX render
+                        fig, ax = plt.subplots(figsize=(6, 1))
+                        ax.text(0.5, 0.5, f'${latex}$', fontsize=16, ha='center', va='center', transform=ax.transAxes)
+                        ax.axis('off')
                         
                         buf = BytesIO()
-                        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', transparent=True, pad_inches=0.1)
+                        plt.savefig(buf, format='png', dpi=200, bbox_inches='tight', transparent=True, pad_inches=0.1)
                         plt.close(fig)
                         
                         img_data = base64.b64encode(buf.getvalue()).decode()
@@ -76,15 +78,17 @@ class ReportGenerator:
                 
                 if for_pdf and MATPLOTLIB_AVAILABLE:
                     try:
-                        fig = plt.figure(figsize=(2, 0.5))
-                        fig.text(0.5, 0.5, f'${latex}$', fontsize=12, ha='center', va='center')
+                        # Matplotlib ile inline LaTeX render
+                        fig, ax = plt.subplots(figsize=(3, 0.6))
+                        ax.text(0.5, 0.5, f'${latex}$', fontsize=13, ha='center', va='center', transform=ax.transAxes)
+                        ax.axis('off')
                         
                         buf = BytesIO()
-                        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', transparent=True, pad_inches=0.05)
+                        plt.savefig(buf, format='png', dpi=200, bbox_inches='tight', transparent=True, pad_inches=0.05)
                         plt.close(fig)
                         
                         img_data = base64.b64encode(buf.getvalue()).decode()
-                        return f'<img src="data:image/png;base64,{img_data}" style="vertical-align: middle; max-height: 1.5em;" alt="Math: {latex}"/>'
+                        return f'<img src="data:image/png;base64,{img_data}" style="vertical-align: middle; max-height: 1.8em;" alt="Math: {latex}"/>'
                     except Exception as e:
                         current_app.logger.warning(f'PDF LaTeX render hatası: {e}')
                         return f'<code>${latex}$</code>'
@@ -108,6 +112,26 @@ class ReportGenerator:
             current_app.logger.error(traceback.format_exc())
             return html
     
+    def convert_superscripts_subscripts(self, html):
+        """Üslü ve altlı sayıları HTML sup/sub tag'lerine çevir"""
+        try:
+            # 10^-5 gibi formatları <sup> tag'ine çevir
+            html = re.sub(r'(\d+)\^(-?\d+)', r'\1<sup>\2</sup>', html)
+            
+            # x^2, y^3 gibi formatları da çevir
+            html = re.sub(r'([a-zA-Z])\ ?\^\ ?(\d+)', r'\1<sup>\2</sup>', html)
+            
+            # ×10^-5 gibi çarpma işaretli formatları da çevir  
+            html = re.sub(r'(×|x)\s?10\^(-?\d+)', r'\1 10<sup>\2</sup>', html)
+            
+            # Alt simge için _kullanımı: H_2O -> H<sub>2</sub>O
+            html = re.sub(r'([a-zA-Z])_(\d+)', r'\1<sub>\2</sub>', html)
+            
+            return html
+        except Exception as e:
+            current_app.logger.error(f'Superscript dönüşüm hatası: {str(e)}')
+            return html
+    
     def markdown_to_html(self, markdown_text, for_pdf=False):
         """Markdown'u HTML'e çevir - LaTeX desteği ile"""
         # Önce markdown'u HTML'e çevir
@@ -115,6 +139,9 @@ class ReportGenerator:
             markdown_text,
             extras=['tables', 'fenced-code-blocks', 'break-on-newline', 'cuddled-lists', 'code-friendly', 'strike', 'task_list']
         )
+        
+        # Üslü ve altlı sayıları çevir
+        html = self.convert_superscripts_subscripts(html)
         
         # Sonra HTML içindeki LaTeX'i işle
         html = self.process_latex_in_html(html, for_pdf=for_pdf)
@@ -298,8 +325,7 @@ class ReportGenerator:
                 }
             """
             
-            # HTML template
-            date_str = datetime.now().strftime('%d.%m.%Y %H:%M')
+            # HTML template - sadece içerik (başlık ve tarih HTML'den kaldırıldı)
             html_template = f"""
             <!DOCTYPE html>
             <html lang="tr">
@@ -309,10 +335,6 @@ class ReportGenerator:
                 <style>{css_style}</style>
             </head>
             <body>
-                <h1>{title}</h1>
-                <div class="report-meta">
-                    Oluşturulma Tarihi: {date_str}
-                </div>
                 {html_content}
             </body>
             </html>
@@ -352,26 +374,16 @@ class ReportGenerator:
                 # Word belgesi oluştur
                 doc = Document()
                 
-                # Başlık ekle
-                from docx.shared import Pt, RGBColor
-                from docx.enum.text import WD_ALIGN_PARAGRAPH
-                
-                title_paragraph = doc.add_heading(title, 0)
-                title_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                
-                # Tarih bilgisi ekle
-                date_str = datetime.now().strftime('%d.%m.%Y %H:%M')
-                date_paragraph = doc.add_paragraph(f'Oluşturulma Tarihi: {date_str}')
-                date_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                date_paragraph.runs[0].font.size = Pt(9)
-                date_paragraph.runs[0].font.color.rgb = RGBColor(128, 128, 128)
-                
-                # Ayırıcı çizgi
-                doc.add_paragraph('_' * 50)
-                
                 # HTML'i Word'e dönüştür
+                from docx.enum.text import WD_ALIGN_PARAGRAPH
                 new_parser = HtmlToDocx()
                 new_parser.add_html_to_document(html_content, doc)
+                
+                # İlk başlığı ortala (H1 veya Heading 1)
+                for para in doc.paragraphs[:3]:  # İlk 3 paragraf kontrol et
+                    if para.style.name in ['Heading 1', 'Title', 'Heading1']:
+                        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        break
                 
                 # Belgeyi kaydet
                 doc.save(filepath)
@@ -401,21 +413,8 @@ class ReportGenerator:
                 # Word belgesi oluştur
                 doc = Document()
                 
-                # Başlık ekle
-                title_paragraph = doc.add_heading(title, 0)
-                title_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                
-                # Tarih bilgisi ekle
-                date_str = datetime.now().strftime('%d.%m.%Y %H:%M')
-                date_paragraph = doc.add_paragraph(f'Oluşturulma Tarihi: {date_str}')
-                date_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                date_paragraph.runs[0].font.size = Pt(9)
-                date_paragraph.runs[0].font.color.rgb = RGBColor(128, 128, 128)
-                
-                # Ayırıcı çizgi
-                doc.add_paragraph('_' * 50)
-                
                 # Markdown içeriğini satır satır işle
+                first_h1 = True  # İlk H1 başlığını takip et
                 lines = content.split('\n')
                 i = 0
                 while i < len(lines):
@@ -427,7 +426,10 @@ class ReportGenerator:
                     
                     # Başlıklar
                     if line.startswith('# '):
-                        doc.add_heading(line[2:], level=1)
+                        heading = doc.add_heading(line[2:], level=1)
+                        if first_h1:
+                            heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            first_h1 = False
                     elif line.startswith('## '):
                         doc.add_heading(line[3:], level=2)
                     elif line.startswith('### '):

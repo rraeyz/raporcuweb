@@ -24,7 +24,7 @@ class ReportGenerator:
         """Markdown'u HTML'e çevir - tam özellik desteği"""
         html = markdown2.markdown(
             markdown_text,
-            extras=['tables', 'fenced-code-blocks', 'break-on-newline', 'cuddled-lists', 'code-friendly']
+            extras=['tables', 'fenced-code-blocks', 'break-on-newline', 'cuddled-lists', 'code-friendly', 'strike', 'task_list']
         )
         return html
     
@@ -275,9 +275,12 @@ class ReportGenerator:
                 """
                 
                 # html2docx ile dönüştür
-                doc = Document()
-                html2docx(full_html, doc)
-                doc.save(filepath)
+                # html2docx byte buffer döndürür, onu dosyaya yazıyoruz
+                buf = html2docx(full_html, title=title)
+                
+                # Buffer'ı dosyaya yaz
+                with open(filepath, 'wb') as f:
+                    f.write(buf.getvalue())
                 
                 # Dosya boyutunu al
                 file_size = os.path.getsize(filepath)

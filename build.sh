@@ -7,9 +7,20 @@ echo "Running database migrations..."
 python -c "
 from app import create_app, db
 from app.models.user import User
+from sqlalchemy import text
 
 app = create_app()
 app.app_context().push()
+
+# Add word file columns if they don't exist
+try:
+    with db.engine.connect() as conn:
+        conn.execute(text('ALTER TABLE reports ADD COLUMN IF NOT EXISTS word_file_path VARCHAR(255)'))
+        conn.execute(text('ALTER TABLE reports ADD COLUMN IF NOT EXISTS word_file_size INTEGER'))
+        conn.commit()
+    print('Word file columns added/verified!')
+except Exception as e:
+    print(f'Migration note: {e}')
 
 # Create all tables
 db.create_all()

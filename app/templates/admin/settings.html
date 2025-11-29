@@ -13,14 +13,14 @@
     
     <div class="card shadow">
         <div class="card-body p-4">
-            <form method="POST" action="{{ url_for('admin.settings') }}" id="settings-form">
+            <form method="POST" action="{{ url_for('admin.settings') }}" id="settings-form" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <!-- Genel Ayarlar -->
                 <h5 class="mb-3">Genel Bilgiler</h5>
                 <div class="row mb-4">
                     <div class="col-md-6">
                         <label class="form-label">Site Adı</label>
-                        <input type="text" class="form-control" name="site_name" value="{{ settings.site_name }}" required>
+                        <input type="text" class="form-control" name="site_name" value="{{ settings.site_name }}">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Tema Rengi</label>
@@ -72,7 +72,7 @@
                     <div class="col-md-6">
                         <label class="form-label">Rapor Başına Kredi</label>
                         <input type="number" class="form-control" name="default_report_cost" 
-                               value="{{ settings.default_report_cost }}" min="1" required>
+                               value="{{ settings.default_report_cost }}" min="1">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Hoş Geldin Bonusu</label>
@@ -171,11 +171,30 @@
 
 {% block extra_js %}
 <script>
-document.getElementById('settings-form').addEventListener('submit', function(e) {
-    const btn = document.getElementById('save-btn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Kaydediliyor...';
-});
+const form = document.getElementById('settings-form');
+const saveBtn = document.getElementById('save-btn');
+
+if (form && saveBtn) {
+    form.addEventListener('submit', function(e) {
+        console.log('Form submit başladı');
+        console.log('Form action:', form.action);
+        console.log('Form method:', form.method);
+        
+        // CSRF token kontrolü
+        const csrfToken = form.querySelector('input[name="csrf_token"]');
+        console.log('CSRF token var mı:', csrfToken ? 'Evet' : 'Hayır');
+        if (csrfToken) {
+            console.log('CSRF token değeri:', csrfToken.value.substring(0, 20) + '...');
+        }
+        
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Kaydediliyor...';
+    });
+    
+    console.log('Settings form listener eklendi');
+} else {
+    console.error('Form veya buton bulunamadı!', {form: !!form, saveBtn: !!saveBtn});
+}
 </script>
 {% endblock %}
 {% endblock %}

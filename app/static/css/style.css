@@ -273,27 +273,20 @@ footer a:hover {
     background: var(--text-primary);
 }
 
-/* Theme Toggle Button */
-#theme-toggle {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    border: none;
-    background-color: var(--primary-color);
-    color: white;
-    font-size: 1.2rem;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+/* Theme Toggle Button in Navbar */
+#theme-toggle-btn {
+    color: rgba(255, 255, 255, 0.9);
     transition: all 0.3s ease;
-    z-index: 1000;
+    cursor: pointer;
 }
 
-#theme-toggle:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+#theme-toggle-btn:hover {
+    color: #fff;
+    transform: rotate(20deg);
+}
+
+#theme-toggle-btn:focus {
+    box-shadow: none;
 }
 
 /* Animation Classes */
@@ -382,6 +375,31 @@ footer a:hover {
 
 [data-theme="dark"] .bg-dark {
     background-color: var(--footer-bg) !important;
+}
+
+[data-theme="dark"] .text-dark {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .bg-white {
+    background-color: var(--card-bg) !important;
+}
+
+[data-theme="dark"] .bg-light {
+    background-color: var(--bg-secondary) !important;
+}
+
+[data-theme="dark"] .text-muted {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3, 
+[data-theme="dark"] h4, [data-theme="dark"] h5, [data-theme="dark"] h6 {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] small {
+    color: var(--text-secondary);
 }
 
 [data-theme="dark"] .dropdown-menu {

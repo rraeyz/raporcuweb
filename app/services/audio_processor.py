@@ -1,14 +1,16 @@
 """
-Ses dosyası işleme servisi - Whisper ve Google Speech API desteği
+Ses dosyası işleme servisi - Google Speech API
 """
 import os
 import tempfile
+import wave
+import logging
 from flask import current_app
-from pydub import AudioSegment
 import speech_recognition as sr
 
 # Whisper hosting'de sorunlu - sadece Google Speech API kullanıyoruz
 WHISPER_AVAILABLE = False
+logger = logging.getLogger(__name__)
 
 class AudioProcessor:
     """Ses dosyası işleme sınıfı"""

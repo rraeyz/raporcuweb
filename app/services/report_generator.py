@@ -36,6 +36,39 @@ class ReportGenerator:
         if not os.path.exists(self.upload_folder):
             os.makedirs(self.upload_folder)
     
+    def latex_to_omml(self, latex_str):
+        """LaTeX'i Office Math ML (OMML) formatına çevir - Word için düzenlenebilir"""
+        try:
+            from lxml import etree
+            
+            # Basit LaTeX ifadelerini OMML'e çevir
+            # Üslü sayılar için: x^2 -> <m:sSup><m:e>x</m:e><m:sup>2</m:sup></m:sSup>
+            
+            # Office Math namespace
+            ns = {'m': 'http://schemas.openxmlformats.org/officeDocument/2006/math'}
+            
+            # Basit üslü sayı parse (10^-5 gibi)
+            if '^' in latex_str:
+                parts = latex_str.split('^')
+                if len(parts) == 2:
+                    base = parts[0].strip()
+                    exp = parts[1].strip('{}').strip()
+                    
+                    # OMML XML oluştur
+                    omml = f'''<m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math">
+                        <m:sSup>
+                            <m:e><m:r><m:t>{base}</m:t></m:r></m:e>
+                            <m:sup><m:r><m:t>{exp}</m:t></m:r></m:sup>
+                        </m:sSup>
+                    </m:oMath>'''
+                    return omml
+            
+            # Basit metin olarak döndür
+            return f'<m:oMath xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><m:r><m:t>{latex_str}</m:t></m:r></m:oMath>'
+        except Exception as e:
+            current_app.logger.error(f'OMML dönüştürme hatası: {e}')
+            return None
+    
     def process_latex_in_html(self, html, for_pdf=False):
         """HTML içindeki LaTeX formüllerini işle (markdown işleminden SONRA)"""
         try:
@@ -375,50 +408,103 @@ class ReportGenerator:
             return None, None, f'PDF oluşturma hatası: {str(e)}'
     
     def generate_word(self, content, title, username):
-        """Markdown içeriğinden Word belgesi oluştur - gelişmiş HTML parsing ile"""
+        """Markdown içeriğinden Word belgesi oluştur - Pandoc ile düzenlenebilir matematik"""
         try:
-            # html2docx ile dene, başarısız olursa fallback kullan
+            # Önce Pandoc ile dene (LaTeX'i Word matematik formatına çevirir)
             try:
-                from htmldocx import HtmlToDocx
-                from docx import Document
+                import subprocess
                 
                 # Dosya adı oluştur
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
                 filename = f'rapor_{username}_{timestamp}.docx'
                 filepath = os.path.join(self.upload_folder, filename)
                 
-                # Markdown'u HTML'e çevir (Word için MathML)
-                html_content = self.markdown_to_html(content, for_pdf=False)
+                # Geçici markdown dosyası oluştur
+                temp_md = os.path.join(self.upload_folder, f'temp_{timestamp}.md')
+                with open(temp_md, 'w', encoding='utf-8') as f:
+                    f.write(content)
                 
-                # Word belgesi oluştur
-                doc = Document()
+                # Pandoc ile Word'e dönüştür
+                cmd = [
+                    'pandoc',
+                    temp_md,
+                    '-o', filepath,
+                    '--from=markdown',
+                    '--to=docx',
+                    '--standalone'
+                ]
                 
-                # HTML'i Word'e dönüştür
-                from docx.enum.text import WD_ALIGN_PARAGRAPH
-                new_parser = HtmlToDocx()
-                new_parser.add_html_to_document(html_content, doc)
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
                 
-                # İlk başlığı ortala (H1 veya Heading 1)
-                for para in doc.paragraphs[:3]:  # İlk 3 paragraf kontrol et
-                    if para.style.name in ['Heading 1', 'Title', 'Heading1']:
-                        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        break
+                # Geçici dosyayı sil
+                if os.path.exists(temp_md):
+                    os.remove(temp_md)
                 
-                # Belgeyi kaydet
-                doc.save(filepath)
+                if result.returncode == 0 and os.path.exists(filepath):
+                    file_size = os.path.getsize(filepath)
+                    
+                    # İlk başlığı ortala
+                    try:
+                        from docx import Document
+                        from docx.enum.text import WD_ALIGN_PARAGRAPH
+                        doc = Document(filepath)
+                        
+                        for para in doc.paragraphs[:3]:
+                            if para.style.name in ['Heading 1', 'Title', 'Heading1']:
+                                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                break
+                        
+                        doc.save(filepath)
+                    except:
+                        pass  # Hizalama başarısız olsa da devam et
+                    
+                    return filepath, file_size, None
+                else:
+                    raise Exception(f"Pandoc hatası: {result.stderr}")
+                    
+            except (FileNotFoundError, subprocess.TimeoutExpired, Exception) as e:
+                current_app.logger.warning(f'Pandoc kullanılamıyor ({str(e)}), htmldocx deneniyor')
                 
-                # Dosya boyutunu al
-                file_size = os.path.getsize(filepath)
-                
-                # Dosyanın gerçekten içerik içerdiğini kontrol et
-                if file_size < 5000:  # Çok küçükse sorun var
-                    current_app.logger.warning(f'htmldocx küçük dosya oluşturdu ({file_size} bytes), fallback kullanılacak')
-                    raise Exception("htmldocx küçük dosya oluşturdu")
-                
-                return filepath, file_size, None
-                
-            except (ImportError, Exception) as e:
-                current_app.logger.warning(f'htmldocx başarısız ({str(e)}), fallback yöntem kullanılıyor')
+                # Pandoc yoksa htmldocx ile dene
+                try:
+                    from htmldocx import HtmlToDocx
+                    from docx import Document
+                    
+                    # Dosya adı oluştur
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    filename = f'rapor_{username}_{timestamp}.docx'
+                    filepath = os.path.join(self.upload_folder, filename)
+                    
+                    # Markdown'u HTML'e çevir
+                    html_content = self.markdown_to_html(content, for_pdf=False)
+                    
+                    # Word belgesi oluştur
+                    doc = Document()
+                    
+                    # HTML'i Word'e dönüştür
+                    from docx.enum.text import WD_ALIGN_PARAGRAPH
+                    new_parser = HtmlToDocx()
+                    new_parser.add_html_to_document(html_content, doc)
+                    
+                    # İlk başlığı ortala
+                    for para in doc.paragraphs[:3]:
+                        if para.style.name in ['Heading 1', 'Title', 'Heading1']:
+                            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            break
+                    
+                    # Belgeyi kaydet
+                    doc.save(filepath)
+                    
+                    file_size = os.path.getsize(filepath)
+                    
+                    if file_size < 5000:
+                        current_app.logger.warning(f'htmldocx küçük dosya oluşturdu ({file_size} bytes), fallback kullanılacak')
+                        raise Exception("htmldocx küçük dosya oluşturdu")
+                    
+                    return filepath, file_size, None
+                    
+                except (ImportError, Exception) as e:
+                    current_app.logger.warning(f'htmldocx başarısız ({str(e)}), fallback yöntem kullanılıyor')
                 # Fallback: geliştirilmiş markdown parsing
                 from docx import Document
                 from docx.shared import Pt, RGBColor, Inches

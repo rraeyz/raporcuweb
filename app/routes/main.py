@@ -114,12 +114,42 @@ def shopier_webhook():
         current_app.logger.info(f"   JSON: {request.get_json(silent=True)}")
         current_app.logger.info(f"   Parsed data: {json.dumps(data)}")
         
-        # Eğer GET isteği boş gelirse (sadece kullanıcı redirect'i)
+        # Eğer GET isteği boş gelirse - debug için bilgi göster
         if request.method == 'GET' and not data:
-            current_app.logger.info("ℹ️ Boş GET isteği (kullanıcı yönlendirmesi), dashboard'a gönder")
-            from flask import flash
-            flash('Ödeme işleminiz alındı, kredi eklenme işlemi devam ediyor...', 'info')
-            return redirect(url_for('main.dashboard'))
+            current_app.logger.info("ℹ️ Boş GET isteği (kullanıcı yönlendirmesi)")
+            debug_html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Webhook Debug</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }}
+        .container {{ max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+        h1 {{ color: #333; }}
+        pre {{ background: #f8f8f8; padding: 15px; border-radius: 4px; overflow-x: auto; }}
+        .info {{ background: #e3f2fd; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #2196f3; }}
+        a {{ display: inline-block; margin-top: 20px; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 4px; }}
+            </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔔 Webhook Debug</h1>
+        <div class="info">
+            <strong>Webhook endpoint'e GET isteği geldi ama veri yok.</strong>
+            <p>Shopier ödeme sonrası kullanıcıyı buraya yönlendirdi.</p>
+        </div>
+        <h3>Request Bilgileri:</h3>
+        <pre>Method: {request.method}
+URL: {request.url}
+Args: {dict(request.args)}
+Headers: {dict(request.headers)}</pre>
+        <a href="/dashboard">Dashboard'a Dön</a>
+    </div>
+</body>
+</html>
+"""
+            return debug_html
         
         # Signature doğrulaması (güvenlik için önemli!)
         # ŞİMDİLİK DEVRE DIŞI - Test aşamasında
@@ -175,24 +205,55 @@ def shopier_webhook():
                 current_app.logger.info(f"⚠️ Order already processed: {order_id}")
                 return {'status': 'success', 'message': 'Already processed'}, 200
         
-        # Custom field'lardan bilgileri al
-        package_id = data.get('custom_field_1') or data.get('custom1')
-        user_id = data.get('custom_field_2') or data.get('custom2')
-        credits = data.get('custom_field_3') or data.get('custom3')
+        # Custom field'lardan bilgileri al (birden fazla isim denenir)
+        package_id = (data.get('custom_field_1') or data.get('custom1') or 
+                     data.get('customfield1') or data.get('custom_1'))
+        user_id = (data.get('custom_field_2') or data.get('custom2') or 
+                  data.get('customfield2') or data.get('custom_2'))
+        credits = (data.get('custom_field_3') or data.get('custom3') or 
+                  data.get('customfield3') or data.get('custom_3'))
+        
+        current_app.logger.info(f"   Custom fields: pkg={package_id}, user={user_id}, credits={credits}")
+        
+        # Eğer custom field yok ama platform_order_id varsa, oradan çıkar
+        if not all([package_id, user_id, credits]) and order_id:
+            # platform_order_id format: "PKG{package_id}_U{user_id}_{timestamp}"
+            if order_id.startswith('PKG') and '_U' in order_id:
+                try:
+                    parts = order_id.split('_')
+                    package_id = int(parts[0].replace('PKG', ''))
+                    user_id = int(parts[1].replace('U', ''))
+                    current_app.logger.info(f"   Extracted from order_id: pkg={package_id}, user={user_id}")
+                    
+                    # Paketten kredi bilgisini al
+                    package = CreditPackage.query.get(package_id)
+                    if package:
+                        credits = package.credits
+                        current_app.logger.info(f"   Credits from package: {credits}")
+                except Exception as e:
+                    current_app.logger.error(f"❌ Order ID parse error: {e}")
         
         # Tip dönüşümleri
         try:
             package_id = int(package_id) if package_id else None
             user_id = int(user_id) if user_id else None
             credits = int(credits) if credits else None
-        except (ValueError, TypeError):
-            current_app.logger.error(f"❌ Invalid data types: pkg={package_id}, user={user_id}, credits={credits}")
+        except (ValueError, TypeError) as e:
+            current_app.logger.error(f"❌ Invalid data types: pkg={package_id}, user={user_id}, credits={credits}, error={e}")
+            if request.method == 'GET':
+                from flask import flash
+                flash('Ödeme verisi hatalı. Lütfen destek ile iletişime geçin.', 'error')
+                return redirect(url_for('main.dashboard'))
             return {'status': 'error', 'message': 'Invalid data'}, 400
         
         if not all([package_id, user_id, credits]):
-            current_app.logger.error(f"❌ Missing fields: pkg={package_id}, user={user_id}, credits={credits}, all_data={data}")
+            current_app.logger.error(f"❌ Missing fields after all attempts:")
+            current_app.logger.error(f"   pkg={package_id}, user={user_id}, credits={credits}")
+            current_app.logger.error(f"   All data={json.dumps(data)}")
             # GET isteğiyse ve veri yoksa kullanıcıyı dashboard'a yönlendir
             if request.method == 'GET':
+                from flask import flash
+                flash('Ödeme bilgisi eksik. Eğer ödeme yaptıysanız lütfen destek ile iletişime geçin.', 'warning')
                 return redirect(url_for('main.dashboard'))
             return {'status': 'error', 'message': 'Missing required fields'}, 400
         

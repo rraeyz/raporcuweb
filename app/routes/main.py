@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash
 from flask_login import login_required, current_user
-from app import csrf
+from app import csrf, limiter
 from app.models.announcement import Announcement
 from app.models.report import Report
 from app.models.transaction import Transaction
@@ -85,6 +85,7 @@ def pricing():
 
 @main_bp.route('/webhook/shopier', methods=['POST', 'GET'])
 @csrf.exempt
+@limiter.exempt
 def shopier_webhook():
     """Shopier webhook - Ödeme sonrası geri dönüş"""
     try:

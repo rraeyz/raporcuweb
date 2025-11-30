@@ -16,54 +16,57 @@ class PaymentService:
         self.base_url = 'https://www.shopier.com/api/v2'
     
     def create_payment(self, package, user):
-        """Shopier API - GET method with URL parameters (Official Method)"""
+        """Shopier REST API ile ödeme talebi oluştur"""
         if not self.api_key or not self.api_secret:
+            # Fallback: Eski yöntem (basit yönlendirme)
             return self._create_legacy_payment_url(package, user)
         
         try:
-            import time
-            from urllib.parse import urlencode
+            # Webhook URL
+            callback_url = url_for('market.shopier_webhook', _external=True)
             
-            # Random number (benzersiz işlem için)
-            timestamp = int(time.time())
-            random_nr = hashlib.md5(f"{timestamp}{user.id}{package.id}".encode()).hexdigest()[:10]
-            
-            # Signature hesaplama (Shopier resmi formatı)
-            # Format: sha256(API_key + random_nr + total_order_value + API_secret)
-            signature_string = f"{self.api_key}{random_nr}{package.price}{self.api_secret}"
-            signature = hashlib.sha256(signature_string.encode('utf-8')).hexdigest()
-            
-            # Shopier API parametreleri (GET method)
-            params = {
+            # Ödeme verisi
+            payment_data = {
                 'API_key': self.api_key,
-                'website_index': 1,
-                'platform_order_id': f"ORD{timestamp}{user.id}",
+                'website_index': 1,  # Shopier'de tanımlı site index
+                'platform_order_id': f"PKG_{package.id}_USR_{user.id}_{int(hashlib.md5(str(user.id).encode()).hexdigest()[:8], 16)}",
                 'product_name': package.name,
-                'product_type': 3,  # 3 = Dijital ürün
+                'product_type': 3,  # Dijital ürün
                 'buyer_name': user.full_name or user.username,
-                'buyer_phone': '5555555555',
+                'buyer_phone': '5555555555',  # Zorunlu alan (varsayılan)
                 'buyer_account_age': 0,
                 'buyer_email': user.email,
-                'buyer_id_nr': user.id,
                 'total_order_value': float(package.price),
                 'currency': 'TL',
-                'platform': 'RaporcuWeb',
-                'is_in_frame': 0,
-                'current_language': 'tr',
-                'modul_version': '1.0.0',
-                'random_nr': random_nr,
-                'signature': signature,
-                # Custom field'lar (webhook'ta kullanacağız)
-                'custom_field_1': str(package.id),
-                'custom_field_2': str(user.id), 
-                'custom_field_3': str(package.credits)
+                'callback_url': callback_url,
+                'custom_fields': json.dumps({
+                    'package_id': package.id,
+                    'user_id': user.id,
+                    'credits': package.credits
+                })
             }
             
-            # Shopier ödeme URL'i oluştur (GET method)
-            payment_url = f"https://www.shopier.com/ShowProductNew/api_pay.php?{urlencode(params)}"
+            # Signature oluştur
+            signature_data = f"{self.api_key}{payment_data['platform_order_id']}{payment_data['total_order_value']}{self.api_secret}"
+            signature = hashlib.sha256(signature_data.encode()).hexdigest()
+            payment_data['signature'] = signature
             
-            current_app.logger.info(f"Shopier payment URL created: random_nr={random_nr}")
-            return payment_url, None
+            # API'ye istek gönder
+            response = requests.post(
+                f"{self.base_url}/payment",
+                json=payment_data,
+                headers={'Content-Type': 'application/json'},
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('status') == 'success':
+                    return result.get('payment_url'), None
+                else:
+                    return None, result.get('message', 'Ödeme oluşturulamadı')
+            else:
+                return None, f'Shopier API hatası: {response.status_code}'
                 
         except Exception as e:
             current_app.logger.error(f"Shopier payment error: {e}")

@@ -120,14 +120,16 @@ def shopier_webhook():
                 return {'status': 'error', 'message': 'Invalid signature'}, 401
         
         # Ödeme durumunu kontrol et
-        status = data.get('status') or data.get('payment_status')
-        if status not in ['success', 'completed', 'paid', '1']:
+        status = str(data.get('status', '')).lower()
+        payment_status = str(data.get('payment_status', '')).lower()
+        
+        if status not in ['success', 'completed', 'paid', '1', 'true'] and payment_status not in ['success', 'completed', 'paid']:
             return {'status': 'error', 'message': 'Payment not successful'}, 400
         
-        # Custom fields'tan bilgileri al (Shopier custom1, custom2, custom3 olarak gönderir)
-        package_id = data.get('custom1')
-        user_id = data.get('custom2')
-        credits = data.get('custom3')
+        # Custom fields (Shopier custom_field_1, custom_field_2, custom_field_3 olarak gönderir)
+        package_id = data.get('custom_field_1') or data.get('custom1')
+        user_id = data.get('custom_field_2') or data.get('custom2')
+        credits = data.get('custom_field_3') or data.get('custom3')
         
         # Tip dönüşümleri
         try:

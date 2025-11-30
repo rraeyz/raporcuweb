@@ -16,54 +16,51 @@ class PaymentService:
         self.base_url = 'https://www.shopier.com/api/v2'
     
     def create_payment(self, package, user):
-        """Shopier ile ödeme - URL parametreli yöntem (Shopier Button API)"""
+        """Shopier Modül API - Dinamik ödeme linki oluşturma"""
         if not self.api_key or not self.api_secret:
             # Fallback: Eski yöntem (basit yönlendirme)
             return self._create_legacy_payment_url(package, user)
         
         try:
-            # Shopier Button API kullanıyoruz
-            # Webhook callback URL
-            callback_url = url_for('market.shopier_webhook', _external=True)
-            success_url = url_for('market.payment_success', _external=True)
-            cancel_url = url_for('market.payment_cancel', _external=True)
+            import time
+            from urllib.parse import urlencode
             
-            # Platform order ID (benzersiz olmalı)
-            platform_order_id = f"PKG{package.id}U{user.id}T{int(hashlib.md5(f'{user.id}{package.id}'.encode()).hexdigest()[:8], 16)}"
+            # Benzersiz sipariş ID (timestamp ekleyerek)
+            timestamp = int(time.time())
+            platform_order_id = f"ORD{package.id}U{user.id}T{timestamp}"
             
-            # Shopier ödeme URL'i oluştur (Shopier Button Link yöntemi)
-            # Not: Shopier'de API Key ile doğrudan payment URL oluşturma şu şekilde
-            payment_url = f"https://www.shopier.com/ShowProductNew/api_pay.php"
-            
-            # URL parametreleri
+            # Shopier Modül API parametreleri
             params = {
                 'API_key': self.api_key,
-                'website_index': '1',  # Shopier paneldeki site index
+                'website_index': 1,
                 'platform_order_id': platform_order_id,
                 'product_name': package.name,
-                'product_type': '3',  # Dijital ürün
+                'product_type': 3,  # Dijital ürün/hizmet
                 'buyer_name': user.full_name or user.username,
-                'buyer_phone': '5555555555',
+                'buyer_phone': '5555555555',  # Zorunlu alan
+                'buyer_account_age': 0,
                 'buyer_email': user.email,
-                'total_order_value': str(package.price),
+                'total_order_value': float(package.price),
                 'currency': 'TL',
-                'callback_url': callback_url,
-                # Custom data için
-                'custom1': str(package.id),
-                'custom2': str(user.id),
-                'custom3': str(package.credits)
+                'modul_version': 'RaporcuWeb_v1',
+                'current_language': 'tr',
+                # Custom alanlar (webhook'ta kullanacağız)
+                'custom_field_1': package.id,
+                'custom_field_2': user.id,
+                'custom_field_3': package.credits
             }
             
-            # Signature oluştur (API Key + Order ID + Total + API Secret)
-            signature_string = f"{self.api_key}{platform_order_id}{package.price}{self.api_secret}"
-            signature = hashlib.sha256(signature_string.encode('utf-8')).hexdigest()
-            params['signature'] = signature
+            # Signature hesaplama (Shopier dokümanına göre)
+            # Format: API_key + website_index + platform_order_id + total_order_value + API_secret
+            signature_data = f"{self.api_key}{params['website_index']}{platform_order_id}{params['total_order_value']}{self.api_secret}"
+            params['signature'] = hashlib.sha256(signature_data.encode('utf-8')).hexdigest()
             
-            # URL parametrelerini ekle
-            from urllib.parse import urlencode
-            full_payment_url = f"{payment_url}?{urlencode(params)}"
+            # Shopier ödeme endpoint'i
+            base_url = "https://www.shopier.com/ShowProductNew/api_pay.php"
+            payment_url = f"{base_url}?{urlencode(params)}"
             
-            return full_payment_url, None
+            current_app.logger.info(f"Shopier payment URL created for order {platform_order_id}")
+            return payment_url, None
                 
         except Exception as e:
             current_app.logger.error(f"Shopier payment error: {e}")

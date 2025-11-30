@@ -96,42 +96,52 @@ def shopier_webhook():
         from app.models.credit_package import CreditPackage
         from app.models.transaction import Transaction
         
-        current_app.logger.info(f"🔔 Shopier callback: method={request.method}, user={current_user.id if not current_user.is_anonymous else 'anonymous'}")
+        current_app.logger.info(f"🔔 Shopier callback: method={request.method}, user={'logged_in' if not current_user.is_anonymous else 'anonymous'}")
         
-        # Kullanıcının son pending transaction'ını bul
-        if current_user.is_anonymous:
-            current_app.logger.error("❌ Kullanıcı giriş yapmamış!")
-            flash('Oturum süreniz dolmuş. Lütfen giriş yapın.', 'error')
-            return redirect(url_for('auth.login'))
+        # URL parametrelerini kontrol et
+        url_params = request.args.to_dict()
+        current_app.logger.info(f"   URL params: {url_params}")
         
+        # Son pending transaction'ı bul (tüm kullanıcılardan - user_id order_id'de var)
         pending_tx = Transaction.query.filter_by(
-            user_id=current_user.id,
             status='pending'
         ).order_by(Transaction.created_at.desc()).first()
         
         if not pending_tx:
-            current_app.logger.error(f"❌ Pending transaction bulunamadı: user={current_user.id}")
-            flash('Ödeme bilgisi bulunamadı. Eğer ödeme yaptıysanız lütfen destek ile iletişime geçin.', 'error')
-            return redirect(url_for('main.dashboard'))
+            current_app.logger.error(f"❌ Hiç pending transaction bulunamadı!")
+            return '''
+                <html><body style="font-family:Arial;padding:50px;text-align:center;">
+                    <h2>⚠️ Ödeme bilgisi bulunamadı</h2>
+                    <p>Eğer ödeme yaptıysanız lütfen destek ile iletişime geçin.</p>
+                    <a href="/" style="color:#667eea;text-decoration:none;">Ana Sayfaya Dön</a>
+                </body></html>
+            '''
         
         order_id = pending_tx.payment_id
-        package_id = None  # Transaction'dan çıkaracağız
         credits = pending_tx.amount
+        user_id = pending_tx.user_id
         
-        current_app.logger.info(f"   Found pending tx: id={pending_tx.id}, order={order_id}, credits={credits}")
-        
-        # URL parametrelerini kontrol et (Shopier status gönderebilir)
-        url_params = request.args.to_dict()
-        current_app.logger.info(f"   URL params: {url_params}")
+        current_app.logger.info(f"   Found pending tx: id={pending_tx.id}, order={order_id}, user={user_id}, credits={credits}")
         
         # Zaten completed mu?
         if pending_tx.status == 'completed':
             current_app.logger.info(f"⚠️ Ödeme zaten tamamlanmış: {order_id}")
-            flash(f'{credits} kredi zaten hesabınıza eklendi!', 'info')
-            return redirect(url_for('main.dashboard'))
+            return f'''
+                <html><body style="font-family:Arial;padding:50px;text-align:center;">
+                    <h2>✅ Ödeme Zaten Tamamlandı</h2>
+                    <p>{credits} kredi zaten hesabınıza eklendi!</p>
+                    <a href="/" style="display:inline-block;margin-top:20px;padding:10px 20px;background:#667eea;color:white;text-decoration:none;border-radius:4px;">Ana Sayfaya Dön</a>
+                </body></html>
+            '''
+        
+        # Kullanıcıyı bul
+        user = User.query.get(user_id)
+        if not user:
+            current_app.logger.error(f"❌ User bulunamadı: {user_id}")
+            return '<html><body>Kullanıcı bulunamadı!</body></html>'
         
         # ✅ KREDİYİ EKLE
-        current_user.add_credits(credits)
+        user.add_credits(credits)
         
         # Transaction'ı COMPLETED yap
         pending_tx.status = 'completed'
@@ -139,10 +149,64 @@ def shopier_webhook():
         
         db.session.commit()
         
-        current_app.logger.info(f"✅ Ödeme başarılı: user={current_user.email}, credits={credits}, order={order_id}")
+        current_app.logger.info(f"✅ Ödeme başarılı: user={user.email}, credits={credits}, order={order_id}")
         
-        flash(f'🎉 Ödeme başarılı! {credits} kredi hesabınıza eklendi.', 'success')
-        return redirect(url_for('main.dashboard'))
+        # Başarı sayfası göster
+        return f'''
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta http-equiv="refresh" content="3;url=/">
+                <style>
+                    body {{
+                        font-family: Arial, sans-serif;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        height: 100vh;
+                        margin: 0;
+                    }}
+                    .success-box {{
+                        background: white;
+                        padding: 50px;
+                        border-radius: 10px;
+                        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+                        text-align: center;
+                        max-width: 500px;
+                    }}
+                    .success-icon {{
+                        font-size: 80px;
+                        color: #4CAF50;
+                        margin-bottom: 20px;
+                    }}
+                    h1 {{ color: #333; margin: 0 0 10px 0; }}
+                    p {{ color: #666; margin: 10px 0; }}
+                    .credits {{ font-size: 32px; color: #667eea; font-weight: bold; margin: 20px 0; }}
+                    .btn {{
+                        display: inline-block;
+                        margin-top: 20px;
+                        padding: 12px 30px;
+                        background: #667eea;
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 5px;
+                        font-weight: bold;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="success-box">
+                    <div class="success-icon">🎉</div>
+                    <h1>Ödeme Başarılı!</h1>
+                    <div class="credits">{credits} Kredi</div>
+                    <p>Hesabınıza başarıyla eklendi</p>
+                    <p style="font-size:14px;color:#999;">3 saniye içinde ana sayfaya yönlendirileceksiniz...</p>
+                    <a href="/" class="btn">Hemen Ana Sayfaya Dön</a>
+                </div>
+            </body>
+            </html>
+        '''
         
     except Exception as e:
         db.session.rollback()

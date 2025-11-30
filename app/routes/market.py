@@ -61,7 +61,7 @@ def buy_package(package_id):
         
         # Ödeme işlemi
         payment_service = PaymentService()
-        payment_url, error = payment_service.create_payment(package, current_user)
+        payment_result, error = payment_service.create_payment(package, current_user)
         
         if error:
             flash(error, 'danger')
@@ -70,8 +70,13 @@ def buy_package(package_id):
                                  final_price=final_price,
                                  promo_discount=promo_discount)
         
-        # Shopier ödeme sayfasına yönlendir
-        return redirect(payment_url)
+        # Eğer HTML form döndüyse direkt render et
+        if payment_result and payment_result.startswith('<!DOCTYPE html>'):
+            from flask import Response
+            return Response(payment_result, mimetype='text/html')
+        
+        # URL döndüyse redirect et
+        return redirect(payment_result)
     
     return render_template('market/buy_package.html', 
                          package=package,

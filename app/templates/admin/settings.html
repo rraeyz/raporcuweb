@@ -55,24 +55,40 @@
                 <hr class="my-4">
                 
                 <!-- Shopier Ayarları -->
-                <h5 class="mb-3"><i class="fas fa-credit-card"></i> Ödeme Ayarları (Shopier Webhook)</h5>
-                <div class="alert alert-success">
-                    <strong>✅ Otomatik Kredi Yükleme Sistemi</strong><br><br>
+                <h5 class="mb-3"><i class="fas fa-credit-card"></i> Ödeme Ayarları (Shopier)</h5>
+                <div class="alert alert-info">
+                    <strong>🔐 Shopier API v4 Entegrasyonu</strong><br><br>
                     <strong>Shopier Panelde Yapılacaklar:</strong><br>
-                    1. <strong>Entegrasyonlar → Modül Yönetimi</strong> → API Key/Secret'i yukarıya girin<br>
-                    2. <strong>"Geri Dönüş URL"</strong> ayarlayın: <code>https://raporcuai.com/webhook/shopier</code><br>
-                    3. <strong>Ürünler</strong> bölümünde aşağıdaki paketlerle <strong>aynı fiyatlı</strong> ürünler oluşturun:<br>
-                    <ul class="mt-2">
-                        <li>Başlangıç Paketi - <strong>{{ packages[0].price if packages else '49.99' }} TL</strong></li>
-                        <li>Standart Paket - <strong>{{ packages[1].price if packages|length > 1 else '149.99' }} TL</strong></li>
-                        <li>Premium Paket - <strong>{{ packages[2].price if packages|length > 2 else '299.99' }} TL</strong></li>
-                    </ul>
-                    <strong>Nasıl Çalışır:</strong><br>
-                    • Kullanıcı Shopier'de ödeme yapar<br>
-                    • Shopier webhook'a POST gönderir<br>
-                    • Sistem ödeme tutarına göre paketi bulur<br>
-                    • Kullanıcının e-postasıyla hesabı bulur<br>
-                    • Krediyi otomatik ekler ✨
+                    1. <strong>Entegrasyonlar → Modül Yönetimi</strong><br>
+                    2. <strong>API Key</strong> ve <strong>API Secret</strong>'i kopyalayıp aşağıya yapıştırın<br>
+                    3. <strong>Geri Dönüş URL:</strong> <code>https://raporcuai.com/webhook/shopier</code><br><br>
+                    
+                    <strong>💡 Nasıl Çalışır:</strong><br>
+                    • Kullanıcı paket seçer<br>
+                    • Shopier API v4 ile otomatik ödeme formu oluşturulur<br>
+                    • Ödeme tamamlanınca webhook çalışır<br>
+                    • Kredi otomatik eklenir ✨<br><br>
+                    
+                    <small class="text-muted">
+                        <strong>Güvenlik:</strong> HMAC-SHA256 signature doğrulaması ile tam güvenli entegrasyon.
+                    </small>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Shopier API Key</label>
+                        <input type="text" class="form-control" name="shopier_api_key" 
+                               value="{{ settings.shopier_api_key }}"
+                               placeholder="c26f154c3e68a7c82a3277f88e501d55">
+                        <small class="text-muted">Shopier panelden alın</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Shopier API Secret</label>
+                        <input type="password" class="form-control" name="shopier_api_secret" 
+                               value="{{ settings.shopier_api_secret }}"
+                               placeholder="f7505d98d5ee56f512c972b570f2f2b2">
+                        <small class="text-muted">Gizli tutun!</small>
+                    </div>
                 </div>
                 
                 <hr class="my-4">

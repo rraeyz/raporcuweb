@@ -1,28 +1,168 @@
 import hashlib
-from flask import current_app, url_for
+import hmac
+import base64
+import random
+from datetime import datetime
+from flask import current_app, url_for, render_template_string
 
 class PaymentService:
-    """Shopier Callback-based Payment Integration"""
+    """Shopier API v4 Payment Integration"""
     
     def __init__(self):
         from app.models.settings import Settings
         settings = Settings.get_settings()
+        self.api_key = settings.shopier_api_key if settings else None
+        self.api_secret = settings.shopier_api_secret if settings else None
         self.payment_url_template = settings.shopier_payment_url if settings else None
     
     def create_payment(self, package, user):
         """
-        Shopier ödeme linki oluştur - kullanıcı ve paket bilgisini custom field olarak gönder
+        Shopier API v4 ile ödeme formu oluştur
         """
-        if not self.payment_url_template:
-            return None, 'Shopier ödeme linki yapılandırılmamış. Admin panelden ayarlayın.'
+        # Eğer API key/secret varsa API v4 kullan
+        if self.api_key and self.api_secret:
+            return self._create_api_v4_form(package, user)
         
+        # Yoksa eski yöntem (URL parametreli)
+        elif self.payment_url_template:
+            return self._create_simple_payment_url(package, user)
+        
+        else:
+            return None, 'Shopier API key/secret veya ödeme linki yapılandırılmamış.'
+    
+    def _create_api_v4_form(self, package, user):
+        """
+        Shopier API v4 - Otomatik submit eden POST form oluştur
+        """
         try:
-            # Shopier linkine custom parametreler ekle
-            # Shopier bu parametreleri webhook'a iletecek
+            # Random number (güvenlik için)
+            random_number = random.randint(1000000, 9999999)
+            
+            # Platform order ID (unique)
+            platform_order_id = f"PKG{package.id}_U{user.id}_{int(datetime.utcnow().timestamp())}"
+            
+            # Kullanıcı hesap yaşı (gün olarak)
+            account_created = user.created_at or datetime.utcnow()
+            buyer_account_age = (datetime.utcnow() - account_created).days
+            
+            # Form parametreleri
+            args = {
+                'API_key': self.api_key,
+                'website_index': 1,  # 1: Kendi siteniz
+                'platform_order_id': platform_order_id,
+                'product_name': f"{package.name} - {package.credits} Kredi",
+                'product_type': 1,  # 1: Dijital ürün
+                'buyer_name': user.full_name.split()[0] if user.full_name else user.username,
+                'buyer_surname': ' '.join(user.full_name.split()[1:]) if user.full_name and len(user.full_name.split()) > 1 else 'Kullanıcı',
+                'buyer_email': user.email,
+                'buyer_account_age': buyer_account_age,
+                'buyer_id_nr': 0,
+                'buyer_phone': '0000000000',  # Zorunlu alan
+                'billing_address': 'Türkiye',
+                'billing_city': 'İstanbul',
+                'billing_country': 'TR',
+                'billing_postcode': '',
+                'shipping_address': 'Türkiye',
+                'shipping_city': 'İstanbul',
+                'shipping_country': 'TR',
+                'shipping_postcode': '',
+                'total_order_value': str(package.price),
+                'currency': '0',  # 0: TL
+                'platform': 0,
+                'is_in_frame': 1,
+                'current_language': '0',  # 0: Türkçe
+                'modul_version': '1.0.4',
+                'random_nr': random_number,
+                # Custom fields - webhook'ta kullanılacak
+                'custom_field_1': package.id,
+                'custom_field_2': user.id,
+                'custom_field_3': package.credits
+            }
+            
+            # Signature oluştur: HMAC-SHA256(random_nr + platform_order_id + total_order_value + currency)
+            signature_data = f"{args['random_nr']}{args['platform_order_id']}{args['total_order_value']}{args['currency']}"
+            signature = hmac.new(
+                self.api_secret.encode(),
+                signature_data.encode(),
+                hashlib.sha256
+            ).digest()
+            signature = base64.b64encode(signature).decode()
+            args['signature'] = signature
+            
+            # Otomatik submit eden HTML form
+            form_html = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Güvenli Ödeme Sayfasına Yönlendiriliyorsunuz...</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .loader {
+            text-align: center;
+            color: white;
+        }
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="loader">
+        <div class="spinner"></div>
+        <h2>Güvenli Ödeme Sayfasına Yönlendiriliyorsunuz...</h2>
+        <p>Lütfen bekleyin...</p>
+    </div>
+    <form action="https://www.shopier.com/ShowProduct/api_pay4.php" method="post" id="shopier_payment_form">
+'''
+            # Hidden input'ları ekle
+            for key, value in args.items():
+                form_html += f'        <input type="hidden" name="{key}" value="{value}">\n'
+            
+            form_html += '''    </form>
+    <script>
+        document.getElementById("shopier_payment_form").submit();
+    </script>
+</body>
+</html>'''
+            
+            current_app.logger.info(f"Shopier API v4 payment form created: order={platform_order_id}, user={user.email}, amount={package.price} TL")
+            
+            # HTML form'u döndür (render edilecek)
+            return form_html, None
+            
+        except Exception as e:
+            current_app.logger.error(f"Shopier API v4 error: {e}")
+            return None, f'Ödeme formu oluşturma hatası: {str(e)}'
+    
+    def _create_simple_payment_url(self, package, user):
+        """
+        Basit URL yöntemi (backward compatibility)
+        """
+        try:
             separator = '&' if '?' in self.payment_url_template else '?'
             payment_url = f"{self.payment_url_template}{separator}custom_field_1={package.id}&custom_field_2={user.id}&custom_field_3={package.credits}"
             
-            current_app.logger.info(f"Payment URL: pkg={package.id}, user={user.id}, credits={package.credits}")
+            current_app.logger.info(f"Simple payment URL: pkg={package.id}, user={user.id}")
             return payment_url, None
             
         except Exception as e:

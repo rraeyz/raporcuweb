@@ -6,7 +6,7 @@ from app.models.promo_code import PromoCode
 from app.models.transaction import Transaction
 from app.services.payment_service import PaymentService
 
-market_bp = Blueprint('market', __name__
+market_bp = Blueprint('market', __name__)
 
 @market_bp.route('/')
 @market_bp.route('/packages')

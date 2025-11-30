@@ -37,9 +37,27 @@ def generate_report_async(app, report_id, full_prompt, title, ai_model, username
                 return
             
             # PDF ve Word oluştur
-            # Raporu güncelle - sadece markdown içeriğini sakla
-            # PDF/Word artık talep geldiğinde yeniden oluşturulacak
+            # PDF ve Word dosyalarını oluştur
+            generator = ReportGenerator()
+            
+            # PDF oluştur
+            pdf_path, pdf_size, pdf_error = generator.generate_pdf(
+                content=content,
+                title=title,
+                username=username
+            )
+            
+            # Word oluştur
+            word_path, word_size, word_error = generator.generate_word(
+                content=content,
+                title=title,
+                username=username
+            )
+            
+            # Raporu güncelle
             report.content = content
+            report.file_path = pdf_path if not pdf_error else None
+            report.word_file_path = word_path if not word_error else None
             report.status = 'completed'
             
             db.session.commit()
@@ -236,7 +254,7 @@ def view_report(report_id):
 @reports_bp.route('/download/<int:report_id>')
 @login_required
 def download_report(report_id):
-    """PDF olarak raporu indir - Markdown'dan yeniden oluşturulur"""
+    """PDF olarak raporu indir - varsa kaydedilmiş dosya, yoksa yeniden oluştur"""
     report = Report.query.get_or_404(report_id)
     
     # Yetki kontrolü
@@ -244,37 +262,33 @@ def download_report(report_id):
         abort(403)
     
     try:
-        from app.services.report_generator import ReportGenerator
+        # Önce kaydedilmiş dosya var mı kontrol et
+        if report.file_path and os.path.exists(report.file_path):
+            filepath = report.file_path
+        else:
+            # Dosya yoksa yeniden oluştur
+            from app.services.report_generator import ReportGenerator
+            generator = ReportGenerator()
+            filepath, file_size, error = generator.generate_pdf(
+                content=report.content,
+                title=report.title,
+                username=current_user.username
+            )
+            
+            if error:
+                flash(f'PDF oluşturma hatası: {error}', 'danger')
+                return redirect(url_for('reports.view_report', report_id=report.id))
+            
+            # Yeni oluşturulan dosyayı kaydet
+            report.file_path = filepath
+            db.session.commit()
         
-        # Markdown içeriğinden PDF oluştur
-        generator = ReportGenerator()
-        filepath, file_size, error = generator.generate_pdf(
-            content=report.content,
-            title=report.title,
-            username=current_user.username
-        )
-        
-        if error:
-            flash(f'PDF oluşturma hatası: {error}', 'danger')
-            return redirect(url_for('reports.view_report', report_id=report.id))
-        
-        # Dosyayı gönder ve sonra sil
-        response = send_file(
+        # Dosyayı gönder
+        return send_file(
             filepath,
             as_attachment=True,
             download_name=f'{report.title}.pdf'
         )
-        
-        # Response gönderildikten sonra dosyayı sil
-        @response.call_on_close
-        def cleanup():
-            try:
-                if os.path.exists(filepath):
-                    os.remove(filepath)
-            except:
-                pass
-        
-        return response
         
     except Exception as e:
         current_app.logger.error(f'PDF indirme hatası: {str(e)}')
@@ -284,7 +298,7 @@ def download_report(report_id):
 @reports_bp.route('/download-word/<int:report_id>')
 @login_required
 def download_word(report_id):
-    """Word olarak raporu indir - Markdown'dan yeniden oluşturulur"""
+    """Word olarak raporu indir - varsa kaydedilmiş dosya, yoksa yeniden oluştur"""
     report = Report.query.get_or_404(report_id)
     
     # Yetki kontrolü
@@ -292,37 +306,33 @@ def download_word(report_id):
         abort(403)
     
     try:
-        from app.services.report_generator import ReportGenerator
+        # Önce kaydedilmiş dosya var mı kontrol et
+        if report.word_file_path and os.path.exists(report.word_file_path):
+            filepath = report.word_file_path
+        else:
+            # Dosya yoksa yeniden oluştur
+            from app.services.report_generator import ReportGenerator
+            generator = ReportGenerator()
+            filepath, file_size, error = generator.generate_word(
+                content=report.content,
+                title=report.title,
+                username=current_user.username
+            )
+            
+            if error:
+                flash(f'Word oluşturma hatası: {error}', 'danger')
+                return redirect(url_for('reports.view_report', report_id=report.id))
+            
+            # Yeni oluşturulan dosyayı kaydet
+            report.word_file_path = filepath
+            db.session.commit()
         
-        # Markdown içeriğinden Word oluştur
-        generator = ReportGenerator()
-        filepath, file_size, error = generator.generate_word(
-            content=report.content,
-            title=report.title,
-            username=current_user.username
-        )
-        
-        if error:
-            flash(f'Word oluşturma hatası: {error}', 'danger')
-            return redirect(url_for('reports.view_report', report_id=report.id))
-        
-        # Dosyayı gönder ve sonra sil
-        response = send_file(
+        # Dosyayı gönder
+        return send_file(
             filepath,
             as_attachment=True,
             download_name=f'{report.title}.docx'
         )
-        
-        # Response gönderildikten sonra dosyayı sil
-        @response.call_on_close
-        def cleanup():
-            try:
-                if os.path.exists(filepath):
-                    os.remove(filepath)
-            except:
-                pass
-        
-        return response
         
     except Exception as e:
         current_app.logger.error(f'Word indirme hatası: {str(e)}')

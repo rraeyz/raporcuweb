@@ -1,11 +1,11 @@
 services:
   - type: web
     name: raporcuweb
-    env: docker
+    env: python
     region: frankfurt
     plan: free
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn run:app --workers 1 --threads 2 --timeout 120 --max-requests 100 --max-requests-jitter 10
     envVars:
       - key: FLASK_APP
         value: run.py

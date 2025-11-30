@@ -11,4 +11,5 @@ texlive-xetex
 texlive-fonts-recommended
 texlive-latex-recommended
 texlive-latex-extra
-texlive-xetex
+lmodern
+cm-super

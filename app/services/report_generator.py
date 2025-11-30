@@ -224,7 +224,7 @@ class ReportGenerator:
                     '--from=markdown',
                     '--to=pdf',
                     '--pdf-engine=xelatex',
-                    '-V', 'mainfont=Times New Roman',
+                    '-V', 'mainfont=DejaVu Serif',
                     '-V', 'fontsize=12pt',
                     '-V', 'geometry:margin=2.5cm',
                     '--standalone'

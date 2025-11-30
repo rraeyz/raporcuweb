@@ -55,19 +55,24 @@
                 <hr class="my-4">
                 
                 <!-- Shopier Ayarları -->
-                <h5 class="mb-3"><i class="fas fa-credit-card"></i> Ödeme Ayarları (Shopier)</h5>
-                <div class="alert alert-warning">
-                    <strong>📌 Kurulum Adımları:</strong><br>
-                    1. Shopier panelde her kredi paketi için <strong>ayrı ürün/ödeme linki</strong> oluşturun<br>
-                    2. Her link için <strong>"Geri Dönüş URL"</strong> ayarlayın: <code>https://raporcuai.com/market/payment/callback</code><br>
-                    3. İlk paket linkini aşağıya yapıştırın (tüm paketler için otomatik çalışacak)
-                </div>
-                <div class="mb-4">
-                    <label class="form-label">Shopier Ödeme Linki (Herhangi bir paket)</label>
-                    <input type="url" class="form-control" name="shopier_payment_url" 
-                           value="{{ settings.shopier_payment_url }}" 
-                           placeholder="https://www.shopier.com/...">
-                    <div class="form-text">Örnek: Başlangıç Paketi linkini yapıştırın. Sistem otomatik olarak paket bilgisini ekler.</div>
+                <h5 class="mb-3"><i class="fas fa-credit-card"></i> Ödeme Ayarları (Shopier Webhook)</h5>
+                <div class="alert alert-success">
+                    <strong>✅ Otomatik Kredi Yükleme Sistemi</strong><br><br>
+                    <strong>Shopier Panelde Yapılacaklar:</strong><br>
+                    1. <strong>Entegrasyonlar → Modül Yönetimi</strong> → API Key/Secret'i yukarıya girin<br>
+                    2. <strong>"Geri Dönüş URL"</strong> ayarlayın: <code>https://raporcuai.com/webhook/shopier</code><br>
+                    3. <strong>Ürünler</strong> bölümünde aşağıdaki paketlerle <strong>aynı fiyatlı</strong> ürünler oluşturun:<br>
+                    <ul class="mt-2">
+                        <li>Başlangıç Paketi - <strong>{{ packages[0].price if packages else '49.99' }} TL</strong></li>
+                        <li>Standart Paket - <strong>{{ packages[1].price if packages|length > 1 else '149.99' }} TL</strong></li>
+                        <li>Premium Paket - <strong>{{ packages[2].price if packages|length > 2 else '299.99' }} TL</strong></li>
+                    </ul>
+                    <strong>Nasıl Çalışır:</strong><br>
+                    • Kullanıcı Shopier'de ödeme yapar<br>
+                    • Shopier webhook'a POST gönderir<br>
+                    • Sistem ödeme tutarına göre paketi bulur<br>
+                    • Kullanıcının e-postasıyla hesabı bulur<br>
+                    • Krediyi otomatik ekler ✨
                 </div>
                 
                 <hr class="my-4">

@@ -11,25 +11,18 @@ class PaymentService:
     
     def create_payment(self, package, user):
         """
-        Shopier callback URL'li ödeme oluştur
-        Shopier'de her paket için ayrı ürün/link oluşturulmuş olmalı
+        Shopier ödeme linki oluştur - kullanıcı ve paket bilgisini custom field olarak gönder
         """
         if not self.payment_url_template:
             return None, 'Shopier ödeme linki yapılandırılmamış. Admin panelden ayarlayın.'
         
         try:
-            # Callback URL - ödeme sonrası dönüş
-            success_url = url_for('market.shopier_callback', 
-                                package_id=package.id, 
-                                user_id=user.id,
-                                _external=True)
+            # Shopier linkine custom parametreler ekle
+            # Shopier bu parametreleri webhook'a iletecek
+            separator = '&' if '?' in self.payment_url_template else '?'
+            payment_url = f"{self.payment_url_template}{separator}custom_field_1={package.id}&custom_field_2={user.id}&custom_field_3={package.credits}"
             
-            # Shopier linkine callback parametresi ekle
-            # Shopier her link için "Geri Dönüş URL" ayarlanmış olmalı
-            # Biz pakete özel bilgiyi URL'ye ekliyoruz
-            payment_url = f"{self.payment_url_template}?package={package.id}&user={user.id}"
-            
-            current_app.logger.info(f"Payment URL created for package {package.id}, user {user.id}")
+            current_app.logger.info(f"Payment URL: pkg={package.id}, user={user.id}, credits={package.credits}")
             return payment_url, None
             
         except Exception as e:

@@ -15,6 +15,29 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     
+    <!-- Dynamic Theme Color -->
+    {% if settings and settings.theme_color %}
+    <style>
+        :root {
+            --primary-color: {{ settings.theme_color }} !important;
+        }
+        .navbar-dark.bg-primary {
+            background-color: {{ settings.theme_color }} !important;
+        }
+        .btn-primary {
+            background-color: {{ settings.theme_color }} !important;
+            border-color: {{ settings.theme_color }} !important;
+        }
+        .btn-primary:hover {
+            background-color: color-mix(in srgb, {{ settings.theme_color }}, black 15%) !important;
+            border-color: color-mix(in srgb, {{ settings.theme_color }}, black 15%) !important;
+        }
+        .text-primary {
+            color: {{ settings.theme_color }} !important;
+        }
+    </style>
+    {% endif %}
+    
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -160,10 +183,9 @@
         const themeIcon = document.getElementById('theme-icon');
         const html = document.documentElement;
         
-        // Load saved theme or detect system preference
+        // Load saved theme or default to light
         const savedTheme = localStorage.getItem('theme');
-        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const initialTheme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+        const initialTheme = savedTheme || 'light';
         
         // Apply initial theme
         html.setAttribute('data-theme', initialTheme);

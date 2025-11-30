@@ -200,19 +200,64 @@ class ReportGenerator:
         return html
     
     def generate_pdf(self, content, title, username):
-        """Markdown içeriğinden PDF oluştur - WeasyPrint ile"""
-        if not WEASYPRINT_AVAILABLE:
-            current_app.logger.error("WeasyPrint kullanılamıyor!")
-            return None, None, "PDF oluşturulamadı: WeasyPrint kütüphanesi yüklenemedi. Lütfen sistem yöneticisine bildirin."
-        
+        """Markdown içeriğinden PDF oluştur - Pandoc (LaTeX) ile öncelikli, WeasyPrint fallback"""
         try:
-            # Dosya adı oluştur
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f'rapor_{username}_{timestamp}.pdf'
-            filepath = os.path.join(self.upload_folder, filename)
-            
-            # Markdown'u HTML'e çevir (PDF için LaTeX render)
-            html_content = self.markdown_to_html(content, for_pdf=True)
+            # Önce Pandoc ile dene (en kaliteli LaTeX işleme)
+            try:
+                import subprocess
+                
+                # Dosya adı oluştur
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f'rapor_{username}_{timestamp}.pdf'
+                filepath = os.path.join(self.upload_folder, filename)
+                
+                # Geçici markdown dosyası
+                temp_md = os.path.join(self.upload_folder, f'temp_pdf_{timestamp}.md')
+                with open(temp_md, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                
+                # Pandoc komutu - LaTeX engine ile PDF
+                cmd = [
+                    'pandoc',
+                    temp_md,
+                    '-o', filepath,
+                    '--from=markdown',
+                    '--to=pdf',
+                    '--pdf-engine=xelatex',
+                    '-V', 'mainfont=Times New Roman',
+                    '-V', 'fontsize=12pt',
+                    '-V', 'geometry:margin=2.5cm',
+                    '--standalone'
+                ]
+                
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+                
+                # Geçici dosyayı sil
+                if os.path.exists(temp_md):
+                    os.remove(temp_md)
+                
+                if result.returncode == 0 and os.path.exists(filepath):
+                    file_size = os.path.getsize(filepath)
+                    return filepath, file_size, None
+                else:
+                    current_app.logger.warning(f'Pandoc PDF hatası: {result.stderr}')
+                    raise Exception("Pandoc PDF başarısız, WeasyPrint deneniyor")
+                    
+            except (FileNotFoundError, subprocess.TimeoutExpired, Exception) as e:
+                current_app.logger.warning(f'Pandoc kullanılamıyor ({str(e)}), WeasyPrint ile devam ediliyor')
+                
+                # Pandoc başarısız, WeasyPrint ile devam et
+                if not WEASYPRINT_AVAILABLE:
+                    current_app.logger.error("WeasyPrint de kullanılamıyor!")
+                    return None, None, "PDF oluşturulamadı: Pandoc ve WeasyPrint kullanılamadı."
+                
+                # Dosya adı oluştur
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f'rapor_{username}_{timestamp}.pdf'
+                filepath = os.path.join(self.upload_folder, filename)
+                
+                # Markdown'u HTML'e çevir (PDF için LaTeX render)
+                html_content = self.markdown_to_html(content, for_pdf=True)
             
             # Profesyonel PDF CSS stili - Times New Roman 12pt
             css_style = """
@@ -397,15 +442,15 @@ class ReportGenerator:
             </html>
             """
             
-            # PDF oluştur - CSS objesi ile
-            css_obj = CSS(string=css_style)
-            html_obj = HTML(string=html_template)
-            html_obj.write_pdf(target=filepath, stylesheets=[css_obj])
-            
-            # Dosya boyutunu al
-            file_size = os.path.getsize(filepath)
-            
-            return filepath, file_size, None
+                # PDF oluştur - CSS objesi ile (WeasyPrint fallback)
+                css_obj = CSS(string=css_style)
+                html_obj = HTML(string=html_template)
+                html_obj.write_pdf(target=filepath, stylesheets=[css_obj])
+                
+                # Dosya boyutunu al
+                file_size = os.path.getsize(filepath)
+                
+                return filepath, file_size, None
             
         except Exception as e:
             current_app.logger.error(f'PDF oluşturma hatası: {str(e)}')

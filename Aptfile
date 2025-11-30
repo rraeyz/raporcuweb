@@ -7,3 +7,6 @@ shared-mime-info
 libcairo2
 fonts-dejavu-core
 pandoc
+texlive-xetex
+texlive-fonts-recommended
+texlive-latex-recommended

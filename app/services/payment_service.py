@@ -45,6 +45,12 @@ class PaymentService:
             account_created = user.created_at or datetime.utcnow()
             buyer_account_age = (datetime.utcnow() - account_created).days
             
+            # İsim-soyisim ayırma (güvenli)
+            full_name = user.full_name or user.username or 'Kullanıcı'
+            name_parts = full_name.split() if full_name else ['Kullanıcı']
+            buyer_name = name_parts[0] if name_parts else 'Kullanıcı'
+            buyer_surname = ' '.join(name_parts[1:]) if len(name_parts) > 1 else 'Kullanıcı'
+            
             # Form parametreleri
             args = {
                 'API_key': self.api_key,
@@ -52,8 +58,8 @@ class PaymentService:
                 'platform_order_id': platform_order_id,
                 'product_name': f"{package.name} - {package.credits} Kredi",
                 'product_type': 1,  # 1: Dijital ürün
-                'buyer_name': user.full_name.split()[0] if user.full_name else user.username,
-                'buyer_surname': ' '.join(user.full_name.split()[1:]) if user.full_name and len(user.full_name.split()) > 1 else 'Kullanıcı',
+                'buyer_name': buyer_name,
+                'buyer_surname': buyer_surname,
                 'buyer_email': user.email,
                 'buyer_account_age': buyer_account_age,
                 'buyer_id_nr': 0,

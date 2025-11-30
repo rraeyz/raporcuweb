@@ -216,17 +216,17 @@ class ReportGenerator:
                 with open(temp_md, 'w', encoding='utf-8') as f:
                     f.write(content)
                 
-                # Pandoc komutu - pdflatex engine ile PDF (daha yaygın, default kurulu)
+                # Pandoc komutu - xelatex engine ile PDF (Docker'da kurulu)
                 cmd = [
                     'pandoc',
                     temp_md,
                     '-o', filepath,
                     '--from=markdown',
                     '--to=pdf',
-                    '--pdf-engine=pdflatex',
+                    '--pdf-engine=xelatex',
+                    '-V', 'mainfont=Times New Roman',
                     '-V', 'fontsize=12pt',
                     '-V', 'geometry:margin=2.5cm',
-                    '-V', 'fontfamily=mathptmx',  # Times benzeri font (pdflatex için)
                     '--standalone'
                 ]
                 

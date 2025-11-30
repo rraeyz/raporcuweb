@@ -121,17 +121,21 @@ def shopier_webhook():
         
         # Ödeme durumunu kontrol et
         status = data.get('status') or data.get('payment_status')
-        if status not in ['success', 'completed', 'paid']:
+        if status not in ['success', 'completed', 'paid', '1']:
             return {'status': 'error', 'message': 'Payment not successful'}, 400
         
-        # Custom fields'tan bilgileri al
-        custom_fields = data.get('custom_fields')
-        if isinstance(custom_fields, str):
-            custom_fields = json.loads(custom_fields)
+        # Custom fields'tan bilgileri al (Shopier custom1, custom2, custom3 olarak gönderir)
+        package_id = data.get('custom1')
+        user_id = data.get('custom2')
+        credits = data.get('custom3')
         
-        user_id = custom_fields.get('user_id')
-        package_id = custom_fields.get('package_id')
-        credits = custom_fields.get('credits')
+        # Tip dönüşümleri
+        try:
+            package_id = int(package_id) if package_id else None
+            user_id = int(user_id) if user_id else None
+            credits = int(credits) if credits else None
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'Invalid custom field data'}, 400
         
         if not all([user_id, package_id, credits]):
             return {'status': 'error', 'message': 'Missing required fields'}, 400

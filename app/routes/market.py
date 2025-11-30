@@ -161,26 +161,64 @@ def shopier_webhook():
     """Shopier webhook - Ödeme tamamlandığında buraya POST/GET gönderir"""
     try:
         import json
+        import hmac
+        import hashlib
+        import base64
         from app.models.user import User
         from app.models.credit_package import CreditPackage
+        from app.models.settings import Settings
         from flask import current_app
         
         # Webhook verisini al
-        data = request.get_json() or request.form.to_dict() or request.args.to_dict()
+        data = request.form.to_dict() or request.get_json() or request.args.to_dict()
         
         # Log (debug)
-        current_app.logger.info(f"Shopier webhook: {json.dumps(data)}")
+        current_app.logger.info(f"Shopier webhook received: {json.dumps(data)}")
+        
+        # Signature doğrulaması (güvenlik için önemli!)
+        settings = Settings.get_settings()
+        if settings.shopier_api_secret:
+            # Shopier signature: base64(HMAC-SHA256(random_nr + platform_order_id + total_order_value + currency, secret))
+            random_nr = data.get('random_nr', '')
+            platform_order_id = data.get('platform_order_id', '')
+            total_order_value = data.get('total_order_value', '')
+            currency = data.get('currency', '0')
+            
+            signature_data = f"{random_nr}{platform_order_id}{total_order_value}{currency}"
+            expected_signature = hmac.new(
+                settings.shopier_api_secret.encode(),
+                signature_data.encode(),
+                hashlib.sha256
+            ).digest()
+            expected_signature = base64.b64encode(expected_signature).decode()
+            
+            received_signature = data.get('signature', '')
+            
+            if received_signature != expected_signature:
+                current_app.logger.error(f"❌ Signature mismatch: {received_signature} != {expected_signature}")
+                return {'status': 'error', 'message': 'Invalid signature'}, 403
+            
+            current_app.logger.info("✅ Signature verified")
         
         # Ödeme durumu kontrol
-        status = data.get('status') or data.get('payment_status')
-        if status not in ['success', 'completed', 'paid', '1', 'KAPALI']:
+        status = data.get('status', '').lower()
+        if status not in ['success', 'completed', 'paid', '1']:
             return {'status': 'error', 'message': 'Payment not successful'}, 400
+        
+        order_id = data.get('platform_order_id')
+        payment_amount = float(data.get('total_order_value', 0))
+        
+        # Tekrar işleme kontrolü
+        if order_id:
+            existing = Transaction.query.filter_by(payment_id=str(order_id)).first()
+            if existing:
+                current_app.logger.info(f"⚠️ Order already processed: {order_id}")
+                return {'status': 'success', 'message': 'Already processed'}, 200
         
         # Custom field'lardan bilgileri al
         package_id = data.get('custom_field_1') or data.get('custom1')
         user_id = data.get('custom_field_2') or data.get('custom2')
         credits = data.get('custom_field_3') or data.get('custom3')
-        order_id = data.get('order_id') or data.get('platform_order_id')
         
         # Tip dönüşümleri
         try:
@@ -188,22 +226,19 @@ def shopier_webhook():
             user_id = int(user_id) if user_id else None
             credits = int(credits) if credits else None
         except (ValueError, TypeError):
+            current_app.logger.error(f"❌ Invalid data types: pkg={package_id}, user={user_id}, credits={credits}")
             return {'status': 'error', 'message': 'Invalid data'}, 400
         
         if not all([package_id, user_id, credits]):
+            current_app.logger.error(f"❌ Missing fields: pkg={package_id}, user={user_id}, credits={credits}")
             return {'status': 'error', 'message': 'Missing required fields'}, 400
-        
-        # Tekrar işleme kontrolü
-        if order_id:
-            existing = Transaction.query.filter_by(payment_id=str(order_id)).first()
-            if existing:
-                return {'status': 'success', 'message': 'Already processed'}, 200
         
         # Kullanıcı ve paket
         user = User.query.get(user_id)
         package = CreditPackage.query.get(package_id)
         
         if not user or not package:
+            current_app.logger.error(f"❌ Not found: user={user_id}, package={package_id}")
             return {'status': 'error', 'message': 'User or package not found'}, 404
         
         # Kredi ekle
@@ -214,22 +249,24 @@ def shopier_webhook():
             user_id=user.id,
             transaction_type='purchase',
             amount=credits,
-            description=f'{package.name} paketi satın alındı',
+            description=f'{package.name} paketi satın alındı (Shopier)',
             payment_method='shopier',
-            payment_id=str(order_id) if order_id else None,
-            payment_amount=package.price,
+            payment_id=str(order_id),
+            payment_amount=payment_amount,
             status='completed'
         )
         
         db.session.add(transaction)
         db.session.commit()
         
-        current_app.logger.info(f"✅ Payment: user={user.id}, credits={credits}")
+        current_app.logger.info(f"✅ Payment OK: user={user.email}, pkg={package.name}, credits={credits}, order={order_id}")
         return {'status': 'success', 'message': 'Payment processed'}, 200
         
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"❌ Webhook error: {e}")
+        import traceback
+        traceback.print_exc()
         return {'status': 'error', 'message': str(e)}, 500
 
 @market_bp.route('/transactions')

@@ -86,7 +86,93 @@ def pricing():
 @main_bp.route('/webhook/shopier', methods=['POST', 'GET'])
 @csrf.exempt
 def shopier_webhook():
-    """Shopier webhook - Ödeme tamamlandığında buraya POST/GET gönderir"""
+    """Shopier webhook - Ödeme sonrası geri dönüş"""
+    try:
+        from flask import request, current_app, redirect, url_for, session, flash
+        from app import db
+        from app.models.user import User
+        from app.models.credit_package import CreditPackage
+        from app.models.transaction import Transaction
+        
+        current_app.logger.info(f"🔔 Shopier callback: method={request.method}")
+        
+        # Session'dan ödeme bilgilerini al
+        payment_info = session.get('pending_payment')
+        
+        if not payment_info:
+            current_app.logger.error("❌ Session'da pending_payment yok!")
+            flash('Ödeme bilgisi bulunamadı. Lütfen tekrar deneyin.', 'error')
+            return redirect(url_for('main.dashboard'))
+        
+        package_id = payment_info.get('package_id')
+        user_id = payment_info.get('user_id')
+        credits = payment_info.get('credits')
+        order_id = payment_info.get('order_id')
+        
+        current_app.logger.info(f"   Session data: pkg={package_id}, user={user_id}, credits={credits}, order={order_id}")
+        
+        # URL parametrelerini kontrol et (Shopier status gönderebilir)
+        url_params = request.args.to_dict()
+        current_app.logger.info(f"   URL params: {url_params}")
+        
+        # Kullanıcı ve paketi bul
+        user = User.query.get(user_id)
+        package = CreditPackage.query.get(package_id)
+        
+        if not user or not package:
+            current_app.logger.error(f"❌ User veya package bulunamadı: user={user_id}, pkg={package_id}")
+            flash('Kullanıcı veya paket bilgisi hatalı.', 'error')
+            session.pop('pending_payment', None)
+            return redirect(url_for('main.dashboard'))
+        
+        # Daha önce işlenmiş mi kontrol et
+        existing = Transaction.query.filter_by(payment_id=order_id).first()
+        if existing:
+            current_app.logger.info(f"⚠️ Ödeme zaten işlenmiş: {order_id}")
+            flash(f'{credits} kredi zaten hesabınıza eklendi!', 'info')
+            session.pop('pending_payment', None)
+            return redirect(url_for('main.dashboard'))
+        
+        # ✅ KREDİYİ EKLE
+        user.add_credits(credits)
+        
+        # Transaction oluştur
+        transaction = Transaction(
+            user_id=user.id,
+            transaction_type='purchase',
+            amount=credits,
+            description=f'{package.name} paketi satın alındı (Shopier)',
+            payment_method='shopier',
+            payment_id=order_id,
+            payment_amount=package.price,
+            status='completed'
+        )
+        
+        db.session.add(transaction)
+        db.session.commit()
+        
+        # Session'ı temizle
+        session.pop('pending_payment', None)
+        
+        current_app.logger.info(f"✅ Ödeme başarılı: user={user.email}, pkg={package.name}, credits={credits}")
+        
+        flash(f'🎉 Ödeme başarılı! {credits} kredi hesabınıza eklendi.', 'success')
+        return redirect(url_for('main.dashboard'))
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"❌ Webhook error: {e}")
+        import traceback
+        traceback.print_exc()
+        from flask import flash, redirect, url_for
+        flash('Ödeme işlemi sırasında hata oluştu. Lütfen destek ile iletişime geçin.', 'error')
+        return redirect(url_for('main.dashboard'))
+
+
+@main_bp.route('/webhook/shopier/old', methods=['POST', 'GET'])
+@csrf.exempt
+def shopier_webhook_old():
+    """ESKİ webhook - POST ile veri gelirse burası çalışır"""
     try:
         import json
         import hmac
@@ -106,7 +192,7 @@ def shopier_webhook():
             data = request.args.to_dict()
         
         # DETAYLI LOG - Her şeyi görelim
-        current_app.logger.info(f"🔔 Shopier webhook çağrıldı:")
+        current_app.logger.info(f"🔔 Shopier webhook OLD çağrıldı:")
         current_app.logger.info(f"   Method: {request.method}")
         current_app.logger.info(f"   Headers: {dict(request.headers)}")
         current_app.logger.info(f"   Form data: {dict(request.form)}")

@@ -35,11 +35,14 @@ class PaymentService:
         Shopier API v4 - Otomatik submit eden POST form oluştur
         """
         try:
+            from flask import session
+            
             # Random number (güvenlik için)
             random_number = random.randint(1000000, 9999999)
             
-            # Platform order ID (unique)
-            platform_order_id = f"PKG{package.id}_U{user.id}_{int(datetime.utcnow().timestamp())}"
+            # Platform order ID - session'dan al (market.py'de oluşturuldu)
+            payment_info = session.get('pending_payment', {})
+            platform_order_id = payment_info.get('order_id', f"PKG{package.id}_U{user.id}_{int(datetime.utcnow().timestamp())}")
             
             # Kullanıcı hesap yaşı (gün olarak)
             account_created = user.created_at or datetime.utcnow()

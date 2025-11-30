@@ -59,6 +59,22 @@ def buy_package(package_id):
             else:
                 flash('Geçersiz promosyon kodu.', 'danger')
         
+        # ✅ Session'a ödeme bilgilerini kaydet (webhook için)
+        from datetime import datetime
+        from flask import session
+        order_id = f"PKG{package.id}_U{current_user.id}_{int(datetime.utcnow().timestamp())}"
+        
+        session['pending_payment'] = {
+            'package_id': package.id,
+            'user_id': current_user.id,
+            'credits': package.credits,
+            'price': package.price,
+            'order_id': order_id,
+            'timestamp': int(datetime.utcnow().timestamp())
+        }
+        
+        current_app.logger.info(f"💾 Payment session saved: {session['pending_payment']}")
+        
         # Ödeme işlemi
         payment_service = PaymentService()
         payment_result, error = payment_service.create_payment(package, current_user)

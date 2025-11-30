@@ -60,9 +60,8 @@ def buy_package(package_id):
                 flash('Geçersiz promosyon kodu.', 'danger')
         
         # Ödeme işlemi
-        from flask import session
         payment_service = PaymentService()
-        payment_url, error = payment_service.create_payment(package, current_user, session)
+        payment_url, error = payment_service.create_payment(package, current_user)
         
         if error:
             flash(error, 'danger')
@@ -162,7 +161,6 @@ def shopier_webhook():
     """Shopier webhook - Ödeme tamamlandığında buraya POST/GET gönderir"""
     try:
         import json
-        from flask import session
         from app.models.user import User
         from app.models.credit_package import CreditPackage
         from flask import current_app
@@ -178,37 +176,28 @@ def shopier_webhook():
         if status not in ['success', 'completed', 'paid', '1', 'KAPALI']:
             return {'status': 'error', 'message': 'Payment not successful'}, 400
         
+        # Custom field'lardan bilgileri al
+        package_id = data.get('custom_field_1') or data.get('custom1')
+        user_id = data.get('custom_field_2') or data.get('custom2')
+        credits = data.get('custom_field_3') or data.get('custom3')
         order_id = data.get('order_id') or data.get('platform_order_id')
-        payment_amount = float(data.get('total_order_value') or data.get('amount', 0))
-        buyer_email = data.get('buyer_email') or data.get('email')
+        
+        # Tip dönüşümleri
+        try:
+            package_id = int(package_id) if package_id else None
+            user_id = int(user_id) if user_id else None
+            credits = int(credits) if credits else None
+        except (ValueError, TypeError):
+            return {'status': 'error', 'message': 'Invalid data'}, 400
+        
+        if not all([package_id, user_id, credits]):
+            return {'status': 'error', 'message': 'Missing required fields'}, 400
         
         # Tekrar işleme kontrolü
         if order_id:
             existing = Transaction.query.filter_by(payment_id=str(order_id)).first()
             if existing:
-                current_app.logger.info(f"⚠️ Order already processed: {order_id}")
                 return {'status': 'success', 'message': 'Already processed'}, 200
-        
-        # 1. Yöntem: Session'dan kullanıcı ve paket bilgisini al
-        package_id = session.get('pending_package_id')
-        user_id = session.get('pending_user_id')
-        
-        # 2. Yöntem: Email ile kullanıcıyı bul (session yoksa)
-        if not user_id and buyer_email:
-            user = User.query.filter_by(email=buyer_email).first()
-            if user:
-                user_id = user.id
-                # Tutara göre paketi bul
-                package = CreditPackage.query.filter_by(
-                    price=payment_amount, 
-                    is_active=True
-                ).first()
-                if package:
-                    package_id = package.id
-        
-        if not package_id or not user_id:
-            current_app.logger.error(f"❌ Missing info: pkg={package_id}, user={user_id}, email={buyer_email}")
-            return {'status': 'error', 'message': 'Missing package or user info'}, 400
         
         # Kullanıcı ve paket
         user = User.query.get(user_id)
@@ -218,28 +207,24 @@ def shopier_webhook():
             return {'status': 'error', 'message': 'User or package not found'}, 404
         
         # Kredi ekle
-        user.add_credits(package.credits)
+        user.add_credits(credits)
         
-        # Transaction kaydet
+        # Transaction
         transaction = Transaction(
             user_id=user.id,
             transaction_type='purchase',
-            amount=package.credits,
-            description=f'{package.name} paketi satın alındı (Shopier)',
+            amount=credits,
+            description=f'{package.name} paketi satın alındı',
             payment_method='shopier',
             payment_id=str(order_id) if order_id else None,
-            payment_amount=payment_amount,
+            payment_amount=package.price,
             status='completed'
         )
         
         db.session.add(transaction)
         db.session.commit()
         
-        # Session'ı temizle
-        session.pop('pending_package_id', None)
-        session.pop('pending_user_id', None)
-        
-        current_app.logger.info(f"✅ Payment OK: user={user.email}, pkg={package.name}, credits={package.credits}")
+        current_app.logger.info(f"✅ Payment: user={user.id}, credits={credits}")
         return {'status': 'success', 'message': 'Payment processed'}, 200
         
     except Exception as e:

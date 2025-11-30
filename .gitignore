@@ -43,9 +43,18 @@ instance/
 .DS_Store
 Thumbs.db
 
-# Uploads
+# Uploads and temp files
 uploads/*
 !uploads/.gitkeep
+temp/*
+!temp/.gitkeep
+
+# Database backups
+*.dump
+*.sql
+*.tar.gz
+backup_*
 
 # Logs
 *.log
+logs/

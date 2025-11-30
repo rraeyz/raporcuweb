@@ -9,20 +9,25 @@ class PaymentService:
         settings = Settings.get_settings()
         self.payment_url_template = settings.shopier_payment_url if settings else None
     
-    def create_payment(self, package, user):
+    def create_payment(self, package, user, session):
         """
-        Shopier ödeme linki oluştur - kullanıcı ve paket bilgisini custom field olarak gönder
+        Shopier ödeme linki oluştur - sadece tutar gönder (dijital ürün gibi)
+        Paket bilgisi session'da saklanacak, webhook dönünce kullanılacak
         """
         if not self.payment_url_template:
             return None, 'Shopier ödeme linki yapılandırılmamış. Admin panelden ayarlayın.'
         
         try:
-            # Shopier linkine custom parametreler ekle
-            # Shopier bu parametreleri webhook'a iletecek
-            separator = '&' if '?' in self.payment_url_template else '?'
-            payment_url = f"{self.payment_url_template}{separator}custom_field_1={package.id}&custom_field_2={user.id}&custom_field_3={package.credits}"
+            # Session'a paket bilgisini kaydet
+            session['pending_package_id'] = package.id
+            session['pending_user_id'] = user.id
+            session.modified = True
             
-            current_app.logger.info(f"Payment URL: pkg={package.id}, user={user.id}, credits={package.credits}")
+            # Shopier'a sadece ödeme linkini gönder (tutar Shopier'da tanımlı)
+            # Dijital ürün gibi çalışacak
+            payment_url = self.payment_url_template
+            
+            current_app.logger.info(f"Payment initiated: pkg={package.id}, user={user.id}, price={package.price} TL")
             return payment_url, None
             
         except Exception as e:

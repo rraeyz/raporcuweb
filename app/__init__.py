@@ -43,6 +43,16 @@ def create_app(config_name='development'):
     login_manager.login_message = 'Bu sayfaya erişmek için lütfen giriş yapın.'
     login_manager.login_message_category = 'warning'
     
+    # HTTPS redirect (production'da)
+    @app.before_request
+    def redirect_to_https():
+        """HTTP isteklerini HTTPS'e yönlendir (production'da)"""
+        if not app.debug and not app.testing:
+            from flask import request, redirect, url_for
+            if request.url.startswith('http://'):
+                url = request.url.replace('http://', 'https://', 1)
+                return redirect(url, code=301)
+    
     # Blueprint'leri kaydet
     from app.routes.auth import auth_bp
     from app.routes.main import main_bp

@@ -117,11 +117,16 @@ def shopier_webhook():
         # Eğer GET isteği boş gelirse - debug için bilgi göster
         if request.method == 'GET' and not data:
             current_app.logger.info("ℹ️ Boş GET isteği (kullanıcı yönlendirmesi)")
+            # HTTPS URL oluştur
+            from flask import make_response
+            dashboard_url = url_for('main.dashboard', _external=True, _scheme='https')
+            
             debug_html = f"""
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     <title>Webhook Debug</title>
     <style>
         body {{ font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }}
@@ -130,7 +135,7 @@ def shopier_webhook():
         pre {{ background: #f8f8f8; padding: 15px; border-radius: 4px; overflow-x: auto; }}
         .info {{ background: #e3f2fd; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #2196f3; }}
         a {{ display: inline-block; margin-top: 20px; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 4px; }}
-            </style>
+    </style>
 </head>
 <body>
     <div class="container">
@@ -144,12 +149,14 @@ def shopier_webhook():
 URL: {request.url}
 Args: {dict(request.args)}
 Headers: {dict(request.headers)}</pre>
-        <a href="/dashboard">Dashboard'a Dön</a>
+        <a href="{dashboard_url}">Dashboard'a Dön</a>
     </div>
 </body>
 </html>
 """
-            return debug_html
+            response = make_response(debug_html)
+            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+            return response
         
         # Signature doğrulaması (güvenlik için önemli!)
         # ŞİMDİLİK DEVRE DIŞI - Test aşamasında

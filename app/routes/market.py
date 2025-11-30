@@ -92,6 +92,70 @@ def payment_cancel():
     flash('Ödeme işlemi iptal edildi.', 'warning')
     return redirect(url_for('market.packages'))
 
+@market_bp.route('/payment/callback')
+def shopier_callback():
+    """Shopier ödeme tamamlandıktan sonra buraya yönlendirir"""
+    try:
+        # URL parametrelerinden bilgileri al
+        package_id = request.args.get('package', type=int)
+        user_id = request.args.get('user', type=int)
+        
+        # Shopier'den gelen ödeme durumu parametreleri
+        payment_status = request.args.get('status') or request.args.get('payment_status')
+        order_id = request.args.get('order_id') or request.args.get('platform_order_id')
+        
+        if not all([package_id, user_id]):
+            flash('Geçersiz ödeme bilgileri', 'danger')
+            return redirect(url_for('market.packages'))
+        
+        from app.models.user import User
+        from app.models.credit_package import CreditPackage
+        
+        user = User.query.get(user_id)
+        package = CreditPackage.query.get(package_id)
+        
+        if not user or not package:
+            flash('Kullanıcı veya paket bulunamadı', 'danger')
+            return redirect(url_for('market.packages'))
+        
+        # Ödeme başarılıysa (Shopier başarılı ödemelerde status=1 gönderir)
+        if payment_status in ['1', 'success', 'completed']:
+            # Aynı ödemenin tekrar işlenmesini önle
+            if order_id:
+                existing = Transaction.query.filter_by(payment_id=str(order_id)).first()
+                if existing:
+                    flash('Bu ödeme zaten işlenmiş', 'info')
+                    return redirect(url_for('main.dashboard'))
+            
+            # Kredi ekle
+            user.add_credits(package.credits)
+            
+            # Transaction kaydı
+            transaction = Transaction(
+                user_id=user.id,
+                transaction_type='purchase',
+                amount=package.credits,
+                description=f'{package.name} paketi satın alındı',
+                payment_method='shopier',
+                payment_id=str(order_id) if order_id else None,
+                payment_amount=package.price,
+                status='completed'
+            )
+            db.session.add(transaction)
+            db.session.commit()
+            
+            flash(f'Ödeme başarılı! {package.credits} kredi hesabınıza eklendi.', 'success')
+            return redirect(url_for('main.dashboard'))
+        else:
+            flash('Ödeme başarısız veya iptal edildi', 'warning')
+            return redirect(url_for('market.packages'))
+            
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Callback error: {e}")
+        flash('Ödeme işlenirken bir hata oluştu', 'danger')
+        return redirect(url_for('market.packages'))
+
 @market_bp.route('/webhook/shopier', methods=['POST'])
 def shopier_webhook():
     """Shopier webhook callback - Ödeme tamamlandığında otomatik çağrılır"""

@@ -37,21 +37,10 @@ def generate_report_async(app, report_id, full_prompt, title, ai_model, username
                 return
             
             # PDF ve Word oluştur
-            report_generator = ReportGenerator()
-            
-            # PDF oluştur
-            pdf_path, pdf_size, pdf_error = report_generator.generate_pdf(content, title, username)
-            
-            # Word oluştur
-            word_path, word_size, word_error = report_generator.generate_word(content, title, username)
-            
-            # Raporu güncelle
+            # Raporu güncelle - sadece markdown içeriğini sakla
+            # PDF/Word artık talep geldiğinde yeniden oluşturulacak
             report.content = content
             report.status = 'completed'
-            report.file_path = pdf_path
-            report.file_size = pdf_size
-            report.word_file_path = word_path
-            report.word_file_size = word_size
             
             db.session.commit()
             
@@ -247,42 +236,98 @@ def view_report(report_id):
 @reports_bp.route('/download/<int:report_id>')
 @login_required
 def download_report(report_id):
-    """PDF olarak raporu indir"""
+    """PDF olarak raporu indir - Markdown'dan yeniden oluşturulur"""
     report = Report.query.get_or_404(report_id)
     
     # Yetki kontrolü
     if report.user_id != current_user.id and not current_user.is_admin:
         abort(403)
     
-    if not report.file_path or not os.path.exists(report.file_path):
-        flash('PDF dosyası bulunamadı.', 'danger')
+    try:
+        from app.services.report_generator import ReportGenerator
+        
+        # Markdown içeriğinden PDF oluştur
+        generator = ReportGenerator()
+        filepath, file_size, error = generator.generate_pdf(
+            content=report.content,
+            title=report.title,
+            username=current_user.username
+        )
+        
+        if error:
+            flash(f'PDF oluşturma hatası: {error}', 'danger')
+            return redirect(url_for('reports.view_report', report_id=report.id))
+        
+        # Dosyayı gönder ve sonra sil
+        response = send_file(
+            filepath,
+            as_attachment=True,
+            download_name=f'{report.title}.pdf'
+        )
+        
+        # Response gönderildikten sonra dosyayı sil
+        @response.call_on_close
+        def cleanup():
+            try:
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            except:
+                pass
+        
+        return response
+        
+    except Exception as e:
+        current_app.logger.error(f'PDF indirme hatası: {str(e)}')
+        flash('PDF oluşturulurken bir hata oluştu.', 'danger')
         return redirect(url_for('reports.view_report', report_id=report.id))
-    
-    return send_file(
-        report.file_path,
-        as_attachment=True,
-        download_name=f'{report.title}.pdf'
-    )
 
 @reports_bp.route('/download-word/<int:report_id>')
 @login_required
 def download_word(report_id):
-    """Word olarak raporu indir"""
+    """Word olarak raporu indir - Markdown'dan yeniden oluşturulur"""
     report = Report.query.get_or_404(report_id)
     
     # Yetki kontrolü
     if report.user_id != current_user.id and not current_user.is_admin:
         abort(403)
     
-    if not report.word_file_path or not os.path.exists(report.word_file_path):
-        flash('Word dosyası bulunamadı.', 'danger')
+    try:
+        from app.services.report_generator import ReportGenerator
+        
+        # Markdown içeriğinden Word oluştur
+        generator = ReportGenerator()
+        filepath, file_size, error = generator.generate_word(
+            content=report.content,
+            title=report.title,
+            username=current_user.username
+        )
+        
+        if error:
+            flash(f'Word oluşturma hatası: {error}', 'danger')
+            return redirect(url_for('reports.view_report', report_id=report.id))
+        
+        # Dosyayı gönder ve sonra sil
+        response = send_file(
+            filepath,
+            as_attachment=True,
+            download_name=f'{report.title}.docx'
+        )
+        
+        # Response gönderildikten sonra dosyayı sil
+        @response.call_on_close
+        def cleanup():
+            try:
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            except:
+                pass
+        
+        return response
+        
+    except Exception as e:
+        current_app.logger.error(f'Word indirme hatası: {str(e)}')
+        flash('Word belgesi oluşturulurken bir hata oluştu.', 'danger')
         return redirect(url_for('reports.view_report', report_id=report.id))
-    
-    return send_file(
-        report.word_file_path,
-        as_attachment=True,
-        download_name=f'{report.title}.docx'
-    )
 
 @reports_bp.route('/process-audio', methods=['POST'])
 @login_required

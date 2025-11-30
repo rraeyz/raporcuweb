@@ -92,18 +92,34 @@ def shopier_webhook():
         import hmac
         import hashlib
         import base64
-        from flask import request, current_app
+        from flask import request, current_app, redirect, url_for
         from app import db
         from app.models.user import User
         from app.models.credit_package import CreditPackage
         from app.models.transaction import Transaction
         from app.models.settings import Settings
         
-        # Webhook verisini al
-        data = request.form.to_dict() or request.get_json() or request.args.to_dict()
+        # Webhook verisini al (POST form, JSON, veya GET params)
+        if request.method == 'POST':
+            data = request.form.to_dict() or request.get_json() or {}
+        else:
+            data = request.args.to_dict()
         
-        # Log (debug)
-        current_app.logger.info(f"Shopier webhook received: {json.dumps(data)}")
+        # DETAYLI LOG - Her şeyi görelim
+        current_app.logger.info(f"🔔 Shopier webhook çağrıldı:")
+        current_app.logger.info(f"   Method: {request.method}")
+        current_app.logger.info(f"   Headers: {dict(request.headers)}")
+        current_app.logger.info(f"   Form data: {dict(request.form)}")
+        current_app.logger.info(f"   Args: {dict(request.args)}")
+        current_app.logger.info(f"   JSON: {request.get_json(silent=True)}")
+        current_app.logger.info(f"   Parsed data: {json.dumps(data)}")
+        
+        # Eğer GET isteği boş gelirse (sadece kullanıcı redirect'i)
+        if request.method == 'GET' and not data:
+            current_app.logger.info("ℹ️ Boş GET isteği (kullanıcı yönlendirmesi), dashboard'a gönder")
+            from flask import flash
+            flash('Ödeme işleminiz alındı, kredi eklenme işlemi devam ediyor...', 'info')
+            return redirect(url_for('main.dashboard'))
         
         # Signature doğrulaması (güvenlik için önemli!)
         # ŞİMDİLİK DEVRE DIŞI - Test aşamasında
@@ -137,8 +153,16 @@ def shopier_webhook():
             current_app.logger.warning("⚠️ Signature validation DISABLED (test mode)")
         
         # Ödeme durumu kontrol
-        status = data.get('status', '').lower()
-        if status not in ['success', 'completed', 'paid', '1']:
+        status = data.get('status', '')
+        current_app.logger.info(f"   Payment status: '{status}'")
+        
+        # Shopier farklı status değerleri gönderebilir: success, 1, completed, paid vb.
+        if str(status).lower() not in ['success', 'completed', 'paid', '1', 'true']:
+            current_app.logger.warning(f"⚠️ Payment not successful, status={status}")
+            if request.method == 'GET':
+                from flask import flash
+                flash('Ödeme tamamlanamadı. Lütfen tekrar deneyin.', 'warning')
+                return redirect(url_for('main.dashboard'))
             return {'status': 'error', 'message': 'Payment not successful'}, 400
         
         order_id = data.get('platform_order_id')
@@ -166,7 +190,10 @@ def shopier_webhook():
             return {'status': 'error', 'message': 'Invalid data'}, 400
         
         if not all([package_id, user_id, credits]):
-            current_app.logger.error(f"❌ Missing fields: pkg={package_id}, user={user_id}, credits={credits}")
+            current_app.logger.error(f"❌ Missing fields: pkg={package_id}, user={user_id}, credits={credits}, all_data={data}")
+            # GET isteğiyse ve veri yoksa kullanıcıyı dashboard'a yönlendir
+            if request.method == 'GET':
+                return redirect(url_for('main.dashboard'))
             return {'status': 'error', 'message': 'Missing required fields'}, 400
         
         # Kullanıcı ve paket
@@ -196,6 +223,13 @@ def shopier_webhook():
         db.session.commit()
         
         current_app.logger.info(f"✅ Payment OK: user={user.email}, pkg={package.name}, credits={credits}, order={order_id}")
+        
+        # POST isteğiyse JSON dön, GET isteğiyse kullanıcıyı yönlendir
+        if request.method == 'GET':
+            from flask import flash
+            flash(f'Ödeme başarılı! {credits} kredi hesabınıza eklendi.', 'success')
+            return redirect(url_for('main.dashboard'))
+        
         return {'status': 'success', 'message': 'Payment processed'}, 200
         
     except Exception as e:

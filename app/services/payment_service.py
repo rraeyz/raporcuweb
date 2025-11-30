@@ -51,6 +51,10 @@ class PaymentService:
             buyer_name = name_parts[0] if name_parts else 'Kullanıcı'
             buyer_surname = ' '.join(name_parts[1:]) if len(name_parts) > 1 else 'Kullanıcı'
             
+            # Webhook URL (absolute URL)
+            with current_app.app_context():
+                webhook_url = url_for('main.shopier_webhook', _external=True)
+            
             # Form parametreleri
             args = {
                 'API_key': self.api_key,
@@ -79,6 +83,7 @@ class PaymentService:
                 'current_language': '0',  # 0: Türkçe
                 'modul_version': '1.0.4',
                 'random_nr': random_number,
+                'callback_url': webhook_url,  # ✅ Webhook URL eklendi!
                 # Custom fields - webhook'ta kullanılacak
                 'custom_field_1': package.id,
                 'custom_field_2': user.id,

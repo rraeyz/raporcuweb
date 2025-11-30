@@ -70,8 +70,15 @@ def buy_package(package_id):
                                  final_price=final_price,
                                  promo_discount=promo_discount)
         
+        if not payment_result:
+            flash('Ödeme sistemi yapılandırılmamış', 'danger')
+            return render_template('market/buy_package.html', 
+                                 package=package, 
+                                 final_price=final_price,
+                                 promo_discount=promo_discount)
+        
         # Eğer HTML form döndüyse direkt render et
-        if payment_result and payment_result.startswith('<!DOCTYPE html>'):
+        if isinstance(payment_result, str) and '<!DOCTYPE html>' in payment_result:
             from flask import Response
             return Response(payment_result, mimetype='text/html')
         

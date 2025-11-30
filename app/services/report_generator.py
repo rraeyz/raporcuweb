@@ -442,15 +442,15 @@ class ReportGenerator:
             </html>
             """
             
-                # PDF oluştur - CSS objesi ile (WeasyPrint fallback)
-                css_obj = CSS(string=css_style)
-                html_obj = HTML(string=html_template)
-                html_obj.write_pdf(target=filepath, stylesheets=[css_obj])
-                
-                # Dosya boyutunu al
-                file_size = os.path.getsize(filepath)
-                
-                return filepath, file_size, None
+            # PDF oluştur - CSS objesi ile (WeasyPrint fallback)
+            css_obj = CSS(string=css_style)
+            html_obj = HTML(string=html_template)
+            html_obj.write_pdf(target=filepath, stylesheets=[css_obj])
+            
+            # Dosya boyutunu al
+            file_size = os.path.getsize(filepath)
+            
+            return filepath, file_size, None
             
         except Exception as e:
             current_app.logger.error(f'PDF oluşturma hatası: {str(e)}')

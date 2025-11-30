@@ -89,73 +89,57 @@ def pricing():
 def shopier_webhook():
     """Shopier webhook - Ödeme sonrası geri dönüş"""
     try:
-        from flask import request, current_app, redirect, url_for, session, flash
+        from flask import request, current_app, redirect, url_for, flash
+        from flask_login import current_user
         from app import db
         from app.models.user import User
         from app.models.credit_package import CreditPackage
         from app.models.transaction import Transaction
         
-        current_app.logger.info(f"🔔 Shopier callback: method={request.method}")
+        current_app.logger.info(f"🔔 Shopier callback: method={request.method}, user={current_user.id if not current_user.is_anonymous else 'anonymous'}")
         
-        # Session'dan ödeme bilgilerini al
-        payment_info = session.get('pending_payment')
+        # Kullanıcının son pending transaction'ını bul
+        if current_user.is_anonymous:
+            current_app.logger.error("❌ Kullanıcı giriş yapmamış!")
+            flash('Oturum süreniz dolmuş. Lütfen giriş yapın.', 'error')
+            return redirect(url_for('auth.login'))
         
-        if not payment_info:
-            current_app.logger.error("❌ Session'da pending_payment yok!")
-            flash('Ödeme bilgisi bulunamadı. Lütfen tekrar deneyin.', 'error')
+        pending_tx = Transaction.query.filter_by(
+            user_id=current_user.id,
+            status='pending'
+        ).order_by(Transaction.created_at.desc()).first()
+        
+        if not pending_tx:
+            current_app.logger.error(f"❌ Pending transaction bulunamadı: user={current_user.id}")
+            flash('Ödeme bilgisi bulunamadı. Eğer ödeme yaptıysanız lütfen destek ile iletişime geçin.', 'error')
             return redirect(url_for('main.dashboard'))
         
-        package_id = payment_info.get('package_id')
-        user_id = payment_info.get('user_id')
-        credits = payment_info.get('credits')
-        order_id = payment_info.get('order_id')
+        order_id = pending_tx.payment_id
+        package_id = None  # Transaction'dan çıkaracağız
+        credits = pending_tx.amount
         
-        current_app.logger.info(f"   Session data: pkg={package_id}, user={user_id}, credits={credits}, order={order_id}")
+        current_app.logger.info(f"   Found pending tx: id={pending_tx.id}, order={order_id}, credits={credits}")
         
         # URL parametrelerini kontrol et (Shopier status gönderebilir)
         url_params = request.args.to_dict()
         current_app.logger.info(f"   URL params: {url_params}")
         
-        # Kullanıcı ve paketi bul
-        user = User.query.get(user_id)
-        package = CreditPackage.query.get(package_id)
-        
-        if not user or not package:
-            current_app.logger.error(f"❌ User veya package bulunamadı: user={user_id}, pkg={package_id}")
-            flash('Kullanıcı veya paket bilgisi hatalı.', 'error')
-            session.pop('pending_payment', None)
-            return redirect(url_for('main.dashboard'))
-        
-        # Daha önce işlenmiş mi kontrol et
-        existing = Transaction.query.filter_by(payment_id=order_id).first()
-        if existing:
-            current_app.logger.info(f"⚠️ Ödeme zaten işlenmiş: {order_id}")
+        # Zaten completed mu?
+        if pending_tx.status == 'completed':
+            current_app.logger.info(f"⚠️ Ödeme zaten tamamlanmış: {order_id}")
             flash(f'{credits} kredi zaten hesabınıza eklendi!', 'info')
-            session.pop('pending_payment', None)
             return redirect(url_for('main.dashboard'))
         
         # ✅ KREDİYİ EKLE
-        user.add_credits(credits)
+        current_user.add_credits(credits)
         
-        # Transaction oluştur
-        transaction = Transaction(
-            user_id=user.id,
-            transaction_type='purchase',
-            amount=credits,
-            description=f'{package.name} paketi satın alındı (Shopier)',
-            payment_method='shopier',
-            payment_id=order_id,
-            payment_amount=package.price,
-            status='completed'
-        )
+        # Transaction'ı COMPLETED yap
+        pending_tx.status = 'completed'
+        pending_tx.description = pending_tx.description.replace('(ödeme bekleniyor)', '(Shopier)')
         
-        db.session.add(transaction)
         db.session.commit()
         
-        # Session'ı temizle
-        session.pop('pending_payment', None)
-        
-        current_app.logger.info(f"✅ Ödeme başarılı: user={user.email}, pkg={package.name}, credits={credits}")
+        current_app.logger.info(f"✅ Ödeme başarılı: user={current_user.email}, credits={credits}, order={order_id}")
         
         flash(f'🎉 Ödeme başarılı! {credits} kredi hesabınıza eklendi.', 'success')
         return redirect(url_for('main.dashboard'))

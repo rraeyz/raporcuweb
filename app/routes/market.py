@@ -59,21 +59,25 @@ def buy_package(package_id):
             else:
                 flash('Geçersiz promosyon kodu.', 'danger')
         
-        # ✅ Session'a ödeme bilgilerini kaydet (webhook için)
+        # ✅ Veritabanına PENDING transaction oluştur (webhook'ta COMPLETED yapılacak)
         from datetime import datetime
-        from flask import session
         order_id = f"PKG{package.id}_U{current_user.id}_{int(datetime.utcnow().timestamp())}"
         
-        session['pending_payment'] = {
-            'package_id': package.id,
-            'user_id': current_user.id,
-            'credits': package.credits,
-            'price': package.price,
-            'order_id': order_id,
-            'timestamp': int(datetime.utcnow().timestamp())
-        }
+        # Pending transaction kaydet
+        pending_transaction = Transaction(
+            user_id=current_user.id,
+            transaction_type='purchase',
+            amount=package.credits,
+            description=f'{package.name} paketi (ödeme bekleniyor)',
+            payment_method='shopier',
+            payment_id=order_id,
+            payment_amount=package.price,
+            status='pending'  # ⚠️ Henüz tamamlanmadı
+        )
+        db.session.add(pending_transaction)
+        db.session.commit()
         
-        current_app.logger.info(f"💾 Payment session saved: {session['pending_payment']}")
+        current_app.logger.info(f"💾 Pending transaction created: order={order_id}, user={current_user.id}")
         
         # Ödeme işlemi
         payment_service = PaymentService()

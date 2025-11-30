@@ -55,13 +55,31 @@
                 <hr class="my-4">
                 
                 <!-- Shopier Ayarları -->
-                <h5 class="mb-3">Ödeme Ayarları (Shopier)</h5>
+                <h5 class="mb-3"><i class="fas fa-credit-card"></i> Ödeme Ayarları (Shopier REST API)</h5>
+                <div class="alert alert-info">
+                    <strong>Otomatik Ödeme İçin:</strong> Shopier panelinden API Key ve API Secret alın.
+                    <br><strong>Webhook URL:</strong> <code>https://raporcuai.com/webhook/shopier</code>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Shopier API Key</label>
+                        <input type="text" class="form-control" name="shopier_api_key" 
+                               value="{{ settings.shopier_api_key }}" 
+                               placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Shopier API Secret</label>
+                        <input type="password" class="form-control" name="shopier_api_secret" 
+                               value="{{ settings.shopier_api_secret }}" 
+                               placeholder="********">
+                    </div>
+                </div>
                 <div class="mb-4">
-                    <label class="form-label">Shopier Ödeme Linki</label>
+                    <label class="form-label">Shopier Ödeme Linki <small class="text-muted">(Eski yöntem - isteğe bağlı)</small></label>
                     <input type="url" class="form-control" name="shopier_payment_url" 
                            value="{{ settings.shopier_payment_url }}" 
                            placeholder="https://www.shopier.com/...">
-                    <div class="form-text">Shopier panelinden alacağınız ödeme linkini buraya girin.</div>
+                    <div class="form-text">API Key girilmezse bu link kullanılır (manuel ödeme).</div>
                 </div>
                 
                 <hr class="my-4">

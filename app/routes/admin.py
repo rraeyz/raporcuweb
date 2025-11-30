@@ -335,6 +335,8 @@ def settings():
             settings.phone = request.form.get('phone')
             
             # Shopier ayarları
+            settings.shopier_api_key = request.form.get('shopier_api_key', '').strip() or None
+            settings.shopier_api_secret = request.form.get('shopier_api_secret', '').strip() or None
             settings.shopier_payment_url = request.form.get('shopier_payment_url')
             
             # Kredi ayarları

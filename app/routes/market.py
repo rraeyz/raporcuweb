@@ -61,7 +61,7 @@ def buy_package(package_id):
         
         # Ödeme işlemi
         payment_service = PaymentService()
-        payment_url, error = payment_service.create_payment_url(package, current_user)
+        payment_url, error = payment_service.create_payment(package, current_user)
         
         if error:
             flash(error, 'danger')
@@ -70,7 +70,7 @@ def buy_package(package_id):
                                  final_price=final_price,
                                  promo_discount=promo_discount)
         
-        # Shopier'e yönlendir
+        # Shopier ödeme sayfasına yönlendir
         return redirect(payment_url)
     
     return render_template('market/buy_package.html', 
@@ -91,6 +91,87 @@ def payment_cancel():
     """Ödeme iptal sayfası"""
     flash('Ödeme işlemi iptal edildi.', 'warning')
     return redirect(url_for('market.packages'))
+
+@market_bp.route('/webhook/shopier', methods=['POST'])
+def shopier_webhook():
+    """Shopier webhook callback - Ödeme tamamlandığında otomatik çağrılır"""
+    try:
+        import json
+        import hmac
+        import hashlib
+        from app.models.settings import Settings
+        from app.models.user import User
+        from app.models.credit_package import CreditPackage
+        
+        # Webhook verisini al
+        data = request.get_json() or request.form.to_dict()
+        
+        # Signature doğrulama
+        settings = Settings.get_settings()
+        if settings and settings.shopier_api_secret:
+            received_signature = request.headers.get('X-Shopier-Signature', '')
+            expected_signature = hmac.new(
+                settings.shopier_api_secret.encode(),
+                json.dumps(data, sort_keys=True).encode(),
+                hashlib.sha256
+            ).hexdigest()
+            
+            if not hmac.compare_digest(received_signature, expected_signature):
+                return {'status': 'error', 'message': 'Invalid signature'}, 401
+        
+        # Ödeme durumunu kontrol et
+        status = data.get('status') or data.get('payment_status')
+        if status not in ['success', 'completed', 'paid']:
+            return {'status': 'error', 'message': 'Payment not successful'}, 400
+        
+        # Custom fields'tan bilgileri al
+        custom_fields = data.get('custom_fields')
+        if isinstance(custom_fields, str):
+            custom_fields = json.loads(custom_fields)
+        
+        user_id = custom_fields.get('user_id')
+        package_id = custom_fields.get('package_id')
+        credits = custom_fields.get('credits')
+        
+        if not all([user_id, package_id, credits]):
+            return {'status': 'error', 'message': 'Missing required fields'}, 400
+        
+        # Kullanıcı ve paketi bul
+        user = User.query.get(user_id)
+        package = CreditPackage.query.get(package_id)
+        
+        if not user or not package:
+            return {'status': 'error', 'message': 'User or package not found'}, 404
+        
+        # Aynı ödemenin tekrar işlenmesini önle
+        payment_id = data.get('order_id') or data.get('platform_order_id')
+        existing_transaction = Transaction.query.filter_by(payment_id=payment_id).first()
+        if existing_transaction:
+            return {'status': 'success', 'message': 'Already processed'}, 200
+        
+        # Kredi ekle
+        user.add_credits(credits)
+        
+        # Transaction kaydı oluştur
+        transaction = Transaction(
+            user_id=user.id,
+            transaction_type='purchase',
+            amount=credits,
+            description=f'{package.name} paketi satın alındı',
+            payment_method='shopier',
+            payment_id=payment_id,
+            payment_amount=data.get('total_order_value') or package.price,
+            status='completed'
+        )
+        
+        db.session.add(transaction)
+        db.session.commit()
+        
+        return {'status': 'success', 'message': 'Payment processed'}, 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return {'status': 'error', 'message': str(e)}, 500
 
 @market_bp.route('/transactions')
 @login_required

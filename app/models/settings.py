@@ -28,7 +28,9 @@ class Settings(db.Model):
     linkedin_url = db.Column(db.String(255))
     
     # Shopier ayarları
-    shopier_payment_url = db.Column(db.String(500))  # Ana ödeme linki
+    shopier_api_key = db.Column(db.String(255))
+    shopier_api_secret = db.Column(db.String(255))
+    shopier_payment_url = db.Column(db.String(500))  # Eski yöntem (backward compatibility)
     shopier_webhook_secret = db.Column(db.String(255))
     
     # Kredi ayarları

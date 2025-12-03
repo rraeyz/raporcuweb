@@ -464,7 +464,7 @@ function processUploadedAudio() {
     
     console.log('processUploadedAudio çağrıldı');
     
-    if (!audioInput.files || !audioInput.files[0]) {
+    if (!audioInput || !audioInput.files || !audioInput.files[0]) {
         showToast('Lütfen önce bir ses dosyası seçin!', 'danger');
         return;
     }
@@ -474,8 +474,10 @@ function processUploadedAudio() {
     const formData = new FormData();
     formData.append('audio_upload', audioInput.files[0]);
     
-    processingDiv.classList.remove('d-none');
-    console.log('İşleniyor animasyonu gösterildi');
+    if (processingDiv) {
+        processingDiv.classList.remove('d-none');
+        console.log('İşleniyor animasyonu gösterildi');
+    }
     
     console.log('Fetch başlıyor...');
     
@@ -492,7 +494,9 @@ function processUploadedAudio() {
     })
     .then(data => {
         console.log('Data:', data);
-        processingDiv.classList.add('d-none');
+        if (processingDiv) {
+            processingDiv.classList.add('d-none');
+        }
         if (data.success) {
             if (contentTextarea.value.trim()) {
                 contentTextarea.value += '\n\n' + data.text;
@@ -507,7 +511,9 @@ function processUploadedAudio() {
     })
     .catch(error => {
         console.error('Fetch hatası:', error);
-        processingDiv.classList.add('d-none');
+        if (processingDiv) {
+            processingDiv.classList.add('d-none');
+        }
         showToast('Ses işlenirken bir hata oluştu: ' + error.message, 'danger');
     });
 }

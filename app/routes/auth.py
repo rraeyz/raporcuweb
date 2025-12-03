@@ -123,11 +123,6 @@ def login():
             # Login timestamp hatası kritik değil, devam et
             current_app.logger.error(f'Last login update error: {e}')
         
-        # Şifre değiştirme kontrolü
-        if user.force_password_change:
-            flash('Güvenlik nedeniyle şifrenizi değiştirmeniz gerekmektedir.', 'warning')
-            return redirect(url_for('auth.change_password'))
-        
         # Yönlendirme
         next_page = request.args.get('next')
         if next_page:

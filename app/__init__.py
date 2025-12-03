@@ -43,8 +43,6 @@ def create_app(config_name='development'):
     login_manager.login_message = 'Bu sayfaya erişmek için lütfen giriş yapın.'
     login_manager.login_message_category = 'warning'
     
-    # Şifre değiştirme zorunluluğu kontrolü
-    @app.before_request
     # Proxy desteği (Nginx arkasındayken)
     from werkzeug.middleware.proxy_fix import ProxyFix
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)

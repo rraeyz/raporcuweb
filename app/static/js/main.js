@@ -460,27 +460,22 @@ function processAudioToText() {
 function processUploadedAudio() {
     const audioInput = document.getElementById('audio_upload');
     const contentTextarea = document.getElementById('prompt');
-    const processingDiv = document.getElementById('audio-processing');
-    
-    console.log('processUploadedAudio çağrıldı');
     
     if (!audioInput || !audioInput.files || !audioInput.files[0]) {
         showToast('Lütfen önce bir ses dosyası seçin!', 'danger');
         return;
     }
     
-    console.log('Ses dosyası:', audioInput.files[0].name);
-    
     const formData = new FormData();
     formData.append('audio_upload', audioInput.files[0]);
     
-    if (processingDiv) {
-        processingDiv.classList.remove('d-none');
-        console.log('İşleniyor animasyonu gösterildi');
-    }
+    // Loading durumu göster
+    const processBtn = event.target;
+    const originalHTML = processBtn.innerHTML;
+    processBtn.disabled = true;
+    processBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> İşleniyor...';
     
-    console.log('Fetch başlıyor...');
-    
+    // AJAX ile ses dosyasını metne çevir
     fetch('/reports/process-audio-file', {
         method: 'POST',
         headers: {
@@ -489,32 +484,40 @@ function processUploadedAudio() {
         body: formData
     })
     .then(response => {
-        console.log('Response alındı:', response.status);
+        if (!response.ok) {
+            return response.json().then(err => Promise.reject(err));
+        }
         return response.json();
     })
     .then(data => {
-        console.log('Data:', data);
-        if (processingDiv) {
-            processingDiv.classList.add('d-none');
-        }
         if (data.success) {
+            // Mevcut içeriğe ekle veya üzerine yaz
             if (contentTextarea.value.trim()) {
-                contentTextarea.value += '\n\n' + data.text;
+                if (confirm('İçerik alanında zaten metin var. Ses metnini eklemek ister misiniz?')) {
+                    contentTextarea.value += '\n\n' + data.text;
+                } else {
+                    contentTextarea.value = data.text;
+                }
             } else {
                 contentTextarea.value = data.text;
             }
             showToast('Ses başarıyla metne dönüştürüldü!', 'success');
+            
+            // Scroll to content area
             contentTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            contentTextarea.focus();
         } else {
             showToast(data.message || 'Ses işlenirken hata oluştu', 'danger');
         }
     })
     .catch(error => {
         console.error('Fetch hatası:', error);
-        if (processingDiv) {
-            processingDiv.classList.add('d-none');
-        }
-        showToast('Ses işlenirken bir hata oluştu: ' + error.message, 'danger');
+        const errorMsg = error.message || 'Ses işlenirken bir hata oluştu';
+        showToast(errorMsg, 'danger');
+    })
+    .finally(() => {
+        processBtn.disabled = false;
+        processBtn.innerHTML = originalHTML;
     });
 }
 

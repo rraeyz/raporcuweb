@@ -23,18 +23,13 @@
             --bs-primary: {{ settings.theme_color }} !important;
             --bs-primary-rgb: {{ settings.theme_color|replace('#','') }} !important;
         }
-        
-        /* Navbar ve genel bg-primary */
-        .navbar-dark.bg-primary, 
-        .bg-primary,
-        div.bg-primary,
-        .card.bg-primary,
-        .badge.bg-primary,
-        .card-header.bg-primary {
+        .navbar-dark.bg-primary, .bg-primary {
             background-color: {{ settings.theme_color }} !important;
         }
-        
-        /* Butonlar */
+        /* Kartlar için özel kural - daha yüksek spesifisite */
+        .card.bg-primary {
+            background-color: {{ settings.theme_color }} !important;
+        }
         .btn-primary {
             background-color: {{ settings.theme_color }} !important;
             border-color: {{ settings.theme_color }} !important;
@@ -51,27 +46,22 @@
             background-color: {{ settings.theme_color }} !important;
             border-color: {{ settings.theme_color }} !important;
         }
-        
-        /* Text rengi */
         .text-primary {
             color: {{ settings.theme_color }} !important;
         }
-        
-        /* Navbar linkler */
         .navbar-dark .navbar-nav .nav-link {
             color: rgba(255,255,255,.95) !important;
         }
         .navbar-dark .navbar-nav .nav-link:hover {
             color: rgba(255,255,255,1) !important;
         }
-        
-        /* Form kontrolleri */
+        .badge.bg-primary {
+            background-color: {{ settings.theme_color }} !important;
+        }
         .form-control:focus, .form-select:focus {
             border-color: {{ settings.theme_color }} !important;
             box-shadow: 0 0 0 0.25rem color-mix(in srgb, {{ settings.theme_color }}, transparent 75%) !important;
         }
-        
-        /* Pagination */
         .page-link {
             color: {{ settings.theme_color }} !important;
         }
@@ -79,22 +69,13 @@
             background-color: {{ settings.theme_color }} !important;
             border-color: {{ settings.theme_color }} !important;
         }
-        
-        /* Alerts */
         .alert-primary {
             background-color: color-mix(in srgb, {{ settings.theme_color }}, white 85%) !important;
             border-color: {{ settings.theme_color }} !important;
             color: {{ settings.theme_color }} !important;
         }
-        
-        /* Kartlar */
-        .card.border-primary {
-            border-color: {{ settings.theme_color }} !important;
-        }
-        
-        /* Link renkleri */
-        .card a, .list-group-item a {
-            color: {{ settings.theme_color }} !important;
+        .card-header.bg-primary {
+            background-color: {{ settings.theme_color }} !important;
         }
     </style>
     {% endif %}

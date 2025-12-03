@@ -32,4 +32,4 @@ RUN mkdir -p uploads temp instance
 
 EXPOSE 5000
 
-CMD ["gunicorn", "run:app", "--workers", "2", "--threads", "4", "--timeout", "120", "--bind", "0.0.0.0:5000"]
+CMD ["gunicorn", "run:app", "--workers", "4", "--threads", "2", "--worker-class", "gthread", "--worker-connections", "1000", "--timeout", "180", "--graceful-timeout", "30", "--keep-alive", "5", "--max-requests", "1000", "--max-requests-jitter", "100", "--preload", "--bind", "0.0.0.0:5000"]

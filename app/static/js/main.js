@@ -462,15 +462,22 @@ function processUploadedAudio() {
     const contentTextarea = document.getElementById('prompt');
     const processingDiv = document.getElementById('audio-processing');
     
+    console.log('processUploadedAudio çağrıldı');
+    
     if (!audioInput.files || !audioInput.files[0]) {
         showToast('Lütfen önce bir ses dosyası seçin!', 'danger');
         return;
     }
     
+    console.log('Ses dosyası:', audioInput.files[0].name);
+    
     const formData = new FormData();
     formData.append('audio_upload', audioInput.files[0]);
     
     processingDiv.classList.remove('d-none');
+    console.log('İşleniyor animasyonu gösterildi');
+    
+    console.log('Fetch başlıyor...');
     
     fetch('/reports/process-audio-file', {
         method: 'POST',
@@ -479,8 +486,12 @@ function processUploadedAudio() {
         },
         body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Response alındı:', response.status);
+        return response.json();
+    })
     .then(data => {
+        console.log('Data:', data);
         processingDiv.classList.add('d-none');
         if (data.success) {
             if (contentTextarea.value.trim()) {
@@ -495,8 +506,9 @@ function processUploadedAudio() {
         }
     })
     .catch(error => {
+        console.error('Fetch hatası:', error);
         processingDiv.classList.add('d-none');
-        showToast('Ses işlenirken bir hata oluştu', 'danger');
+        showToast('Ses işlenirken bir hata oluştu: ' + error.message, 'danger');
     });
 }
 

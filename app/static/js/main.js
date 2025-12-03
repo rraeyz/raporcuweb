@@ -321,6 +321,7 @@ async function startRecording() {
         
         // Update UI
         document.getElementById('start-record-btn').classList.add('d-none');
+        document.getElementById('pause-record-btn').classList.remove('d-none');
         document.getElementById('stop-record-btn').classList.remove('d-none');
         document.getElementById('recording-timer').classList.remove('d-none');
         
@@ -333,6 +334,30 @@ async function startRecording() {
     }
 }
 
+function pauseRecording() {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.pause();
+        clearInterval(timerInterval);
+        
+        document.getElementById('pause-record-btn').classList.add('d-none');
+        document.getElementById('resume-record-btn').classList.remove('d-none');
+        
+        showToast('Kayıt duraklatıldı', 'info');
+    }
+}
+
+function resumeRecording() {
+    if (mediaRecorder && mediaRecorder.state === 'paused') {
+        mediaRecorder.resume();
+        timerInterval = setInterval(updateTimer, 1000);
+        
+        document.getElementById('pause-record-btn').classList.remove('d-none');
+        document.getElementById('resume-record-btn').classList.add('d-none');
+        
+        showToast('Kayıt devam ediyor', 'success');
+    }
+}
+
 function stopRecording() {
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
@@ -340,6 +365,8 @@ function stopRecording() {
         
         // Update UI
         document.getElementById('start-record-btn').classList.remove('d-none');
+        document.getElementById('pause-record-btn').classList.add('d-none');
+        document.getElementById('resume-record-btn').classList.add('d-none');
         document.getElementById('stop-record-btn').classList.add('d-none');
         document.getElementById('recording-timer').classList.add('d-none');
         

@@ -76,11 +76,17 @@
                             
                             <!-- Kayıt yapma bölümü -->
                             <div id="recording-section">
-                                <div class="d-grid gap-2">
+                                <div class="text-center">
                                     <button type="button" class="btn btn-danger" id="start-record-btn" onclick="startRecording()">
                                         <i class="fas fa-circle"></i> Kayda Başla
                                     </button>
-                                    <button type="button" class="btn btn-warning d-none" id="stop-record-btn" onclick="stopRecording()">
+                                    <button type="button" class="btn btn-warning d-none" id="pause-record-btn" onclick="pauseRecording()">
+                                        <i class="fas fa-pause"></i> Duraklat
+                                    </button>
+                                    <button type="button" class="btn btn-success d-none" id="resume-record-btn" onclick="resumeRecording()">
+                                        <i class="fas fa-play"></i> Devam Et
+                                    </button>
+                                    <button type="button" class="btn btn-danger d-none" id="stop-record-btn" onclick="stopRecording()">
                                         <i class="fas fa-stop"></i> Kaydı Durdur
                                     </button>
                                 </div>
@@ -110,7 +116,7 @@
                                     <input type="file" class="form-control" id="audio_upload" name="audio_upload" 
                                            accept=".mp3,.wav,.m4a,.ogg,.webm">
                                     <button type="button" class="btn btn-primary" onclick="processUploadedAudio()">
-                                        <i class="fas fa-cog"></i> İşle
+                                        <i class="fas fa-magic"></i> Sesi Metne Dönüştür
                                     </button>
                                 </div>
                                 <div class="form-text">

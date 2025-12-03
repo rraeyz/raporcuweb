@@ -42,8 +42,14 @@
             background-color: {{ settings.theme_color }} !important;
             border-color: {{ settings.theme_color }} !important;
         }
-        .text-primary, a {
+        .text-primary {
             color: {{ settings.theme_color }} !important;
+        }
+        .navbar-dark .navbar-nav .nav-link {
+            color: rgba(255,255,255,.95) !important;
+        }
+        .navbar-dark .navbar-nav .nav-link:hover {
+            color: rgba(255,255,255,1) !important;
         }
         .badge.bg-primary {
             background-color: {{ settings.theme_color }} !important;

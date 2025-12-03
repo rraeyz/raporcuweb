@@ -45,17 +45,6 @@ def create_app(config_name='development'):
     
     # Şifre değiştirme zorunluluğu kontrolü
     @app.before_request
-    def check_password_change_required():
-        from flask_login import current_user
-        from flask import request, redirect, url_for
-        
-        # Giriş yapmış kullanıcı kontrolü
-        if current_user.is_authenticated and current_user.force_password_change:
-            # Şifre değiştirme ve çıkış sayfalarına izin ver
-            allowed_endpoints = ['auth.change_password', 'auth.logout', 'static']
-            if request.endpoint not in allowed_endpoints:
-                return redirect(url_for('auth.change_password'))
-    
     # Proxy desteği (Nginx arkasındayken)
     from werkzeug.middleware.proxy_fix import ProxyFix
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)

@@ -55,8 +55,7 @@ def init_database():
                 is_admin=True,
                 is_active=True,
                 email_verified=True,
-                credits=100,
-                force_password_change=True  # İlk girişte şifre değiştirmesi gerekiyor
+                credits=100
             )
             admin.set_password(random_password)
             db.session.add(admin)

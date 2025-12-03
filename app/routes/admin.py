@@ -100,8 +100,12 @@ def edit_user(user_id):
             )
             db.session.add(transaction)
         
-        db.session.commit()
-        flash('Kullanıcı başarıyla güncellendi.', 'success')
+        try:
+            db.session.commit()
+            flash('Kullanıcı başarıyla güncellendi.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Kullanıcı güncellenirken hata: {str(e)}', 'danger')
         return redirect(url_for('admin.users'))
     
     return render_template('admin/edit_user.html', user=user)
@@ -118,9 +122,12 @@ def delete_user(user_id):
         return redirect(url_for('admin.users'))
     
     db.session.delete(user)
-    db.session.commit()
-    
-    flash('Kullanıcı başarıyla silindi.', 'success')
+    try:
+        db.session.commit()
+        flash('Kullanıcı başarıyla silindi.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Kullanıcı silinirken hata: {str(e)}', 'danger')
     return redirect(url_for('admin.users'))
 
 # Paket Yönetimi
@@ -150,9 +157,12 @@ def create_package():
         )
         
         db.session.add(package)
-        db.session.commit()
-        
-        flash('Paket başarıyla oluşturuldu.', 'success')
+        try:
+            db.session.commit()
+            flash('Paket başarıyla oluşturuldu.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Paket oluşturulurken hata: {str(e)}', 'danger')
         return redirect(url_for('admin.packages'))
     
     return render_template('admin/create_package.html')
@@ -174,8 +184,12 @@ def edit_package(package_id):
         package.badge = request.form.get('badge', '').strip() or None
         package.sort_order = request.form.get('sort_order', type=int, default=0)
         
-        db.session.commit()
-        flash('Paket başarıyla güncellendi.', 'success')
+        try:
+            db.session.commit()
+            flash('Paket başarıyla güncellendi.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Paket güncellenirken hata: {str(e)}', 'danger')
         return redirect(url_for('admin.packages'))
     
     return render_template('admin/edit_package.html', package=package)
@@ -187,9 +201,12 @@ def delete_package(package_id):
     """Paketi sil"""
     package = CreditPackage.query.get_or_404(package_id)
     db.session.delete(package)
-    db.session.commit()
-    
-    flash('Paket başarıyla silindi.', 'success')
+    try:
+        db.session.commit()
+        flash('Paket başarıyla silindi.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Paket silinirken hata: {str(e)}', 'danger')
     return redirect(url_for('admin.packages'))
 
 # Promosyon Kodu Yönetimi
@@ -225,9 +242,12 @@ def create_promo_code():
         )
         
         db.session.add(promo_code)
-        db.session.commit()
-        
-        flash(f'Promosyon kodu oluşturuldu: {code}', 'success')
+        try:
+            db.session.commit()
+            flash(f'Promosyon kodu oluşturuldu: {code}', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Promosyon kodu oluşturulurken hata: {str(e)}', 'danger')
         return redirect(url_for('admin.promo_codes'))
     
     return render_template('admin/create_promo_code.html')
@@ -239,9 +259,12 @@ def delete_promo_code(code_id):
     """Promosyon kodunu sil"""
     code = PromoCode.query.get_or_404(code_id)
     db.session.delete(code)
-    db.session.commit()
-    
-    flash('Promosyon kodu silindi.', 'success')
+    try:
+        db.session.commit()
+        flash('Promosyon kodu silindi.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Promosyon kodu silinirken hata: {str(e)}', 'danger')
     return redirect(url_for('admin.promo_codes'))
 
 # Duyuru Yönetimi
@@ -272,9 +295,12 @@ def create_announcement():
         )
         
         db.session.add(announcement)
-        db.session.commit()
-        
-        flash('Duyuru oluşturuldu.', 'success')
+        try:
+            db.session.commit()
+            flash('Duyuru oluşturuldu.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Duyuru oluşturulurken hata: {str(e)}', 'danger')
         return redirect(url_for('admin.announcements'))
     
     return render_template('admin/create_announcement.html')
@@ -299,8 +325,12 @@ def edit_announcement(announcement_id):
         if valid_until_str:
             announcement.valid_until = datetime.strptime(valid_until_str, '%Y-%m-%d')
         
-        db.session.commit()
-        flash('Duyuru güncellendi.', 'success')
+        try:
+            db.session.commit()
+            flash('Duyuru güncellendi.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Duyuru güncellenirken hata: {str(e)}', 'danger')
         return redirect(url_for('admin.announcements'))
     
     return render_template('admin/edit_announcement.html', announcement=announcement)
@@ -312,9 +342,12 @@ def delete_announcement(announcement_id):
     """Duyuruyu sil"""
     announcement = Announcement.query.get_or_404(announcement_id)
     db.session.delete(announcement)
-    db.session.commit()
-    
-    flash('Duyuru silindi.', 'success')
+    try:
+        db.session.commit()
+        flash('Duyuru silindi.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Duyuru silinirken hata: {str(e)}', 'danger')
     return redirect(url_for('admin.announcements'))
 
 # Site Ayarları

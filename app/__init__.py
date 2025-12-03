@@ -16,7 +16,7 @@ mail = Mail()
 csrf = CSRFProtect()
 limiter = Limiter(
     key_func=get_remote_address,
-    default_limits=["10000 per day", "1000 per hour"],  # Çok yüksek limitler
+    default_limits=["500 per day", "100 per hour"],  # Brute-force koruması
     storage_uri="memory://"
 )
 
@@ -42,6 +42,19 @@ def create_app(config_name='development'):
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Bu sayfaya erişmek için lütfen giriş yapın.'
     login_manager.login_message_category = 'warning'
+    
+    # Şifre değiştirme zorunluluğu kontrolü
+    @app.before_request
+    def check_password_change_required():
+        from flask_login import current_user
+        from flask import request, redirect, url_for
+        
+        # Giriş yapmış kullanıcı kontrolü
+        if current_user.is_authenticated and current_user.force_password_change:
+            # Şifre değiştirme ve çıkış sayfalarına izin ver
+            allowed_endpoints = ['auth.change_password', 'auth.logout', 'static']
+            if request.endpoint not in allowed_endpoints:
+                return redirect(url_for('auth.change_password'))
     
     # Proxy desteği (Nginx arkasındayken)
     from werkzeug.middleware.proxy_fix import ProxyFix
@@ -86,19 +99,35 @@ def init_default_data():
     from werkzeug.security import generate_password_hash
     
     # Varsayılan admin kullanıcı
-    admin = User.query.filter_by(email='admin@raporcuweb.com').first()
+    admin = User.query.filter_by(username='admin').first()
     if not admin:
+        import secrets
+        random_password = secrets.token_urlsafe(16)
+        
         admin = User(
             username='admin',
-            email='admin@raporcuweb.com',
-            password_hash=generate_password_hash('Admin123!'),
+            email='admin@raporcuai.com',
+            password_hash=generate_password_hash(random_password),
             full_name='Admin',
             is_admin=True,
             is_active=True,
             email_verified=True,
-            credits=1000
+            credits=1000,
+            force_password_change=True
         )
         db.session.add(admin)
+        
+        # Console'a yazdır (uygulama ilk başladığında görünsün)
+        import sys
+        print("\n" + "="*60, file=sys.stderr)
+        print("🔑 ADMIN KULLANICI OLUŞTURULDU", file=sys.stderr)
+        print("="*60, file=sys.stderr)
+        print(f"   Kullanıcı Adı: admin", file=sys.stderr)
+        print(f"   Şifre: {random_password}", file=sys.stderr)
+        print("="*60, file=sys.stderr)
+        print("⚠️  BU ŞİFREYİ GÜVENLİ BİR YERE KAYDIN!", file=sys.stderr)
+        print("⚠️  İlk girişte şifrenizi değiştirmeniz istenecektir.", file=sys.stderr)
+        print("="*60 + "\n", file=sys.stderr)
     
     # Varsayılan site ayarları
     settings = Settings.query.first()

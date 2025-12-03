@@ -70,7 +70,12 @@ def register():
             user.email_verified = True
         
         db.session.add(user)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Kayıt sırasında hata oluştu: {str(e)}', 'danger')
+            return render_template('auth/register.html')
         
         if settings.enable_email_verification:
             flash('Kayıt başarılı! E-posta adresinize gönderilen bağlantıyla hesabınızı doğrulayın.', 'success')
@@ -90,18 +95,18 @@ def login():
         return redirect(url_for('main.dashboard'))
     
     if request.method == 'POST':
-        email = request.form.get('email', '').strip().lower()
+        username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
         remember = request.form.get('remember', False) == 'on'
         
-        if not email or not password:
-            flash('E-posta ve şifre gerekli.', 'danger')
+        if not username or not password:
+            flash('Kullanıcı adı ve şifre gerekli.', 'danger')
             return render_template('auth/login.html')
         
-        user = User.query.filter_by(email=email).first()
+        user = User.query.filter_by(username=username).first()
         
         if not user or not user.check_password(password):
-            flash('Geçersiz e-posta veya şifre.', 'danger')
+            flash('Geçersiz kullanıcı adı veya şifre.', 'danger')
             return render_template('auth/login.html')
         
         if not user.is_active:
@@ -111,7 +116,17 @@ def login():
         # Giriş yap
         login_user(user, remember=remember)
         user.last_login = datetime.utcnow()
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            # Login timestamp hatası kritik değil, devam et
+            current_app.logger.error(f'Last login update error: {e}')
+        
+        # Şifre değiştirme kontrolü
+        if user.force_password_change:
+            flash('Güvenlik nedeniyle şifrenizi değiştirmeniz gerekmektedir.', 'warning')
+            return redirect(url_for('auth.change_password'))
         
         # Yönlendirme
         next_page = request.args.get('next')
@@ -140,7 +155,12 @@ def verify_email(token):
         return redirect(url_for('main.index'))
     
     user.verify_email()
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash(f'E-posta doğrulama kaydedilirken hata: {str(e)}', 'danger')
+        return redirect(url_for('main.index'))
     
     send_welcome_email(user)
     
@@ -176,7 +196,11 @@ def forgot_password():
         
         if user:
             token = user.generate_password_reset_token()
-            db.session.commit()
+            try:
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f'Password reset token save error: {e}')
             send_password_reset_email(user, token)
         
         # Güvenlik için her durumda aynı mesajı göster
@@ -217,9 +241,55 @@ def reset_password(token):
         user.set_password(password)
         user.password_reset_token = None
         user.password_reset_expires = None
-        db.session.commit()
-        
-        flash('Şifreniz başarıyla güncellendi. Giriş yapabilirsiniz.', 'success')
+        try:
+            db.session.commit()
+            flash('Şifreniz başarıyla güncellendi. Giriş yapabilirsiniz.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Şifre güncellenirken hata: {str(e)}', 'danger')
+            return render_template('auth/reset_password.html', token=token)
         return redirect(url_for('auth.login'))
     
     return render_template('auth/reset_password.html', token=token)
+
+@auth_bp.route('/change-password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    """Şifre değiştirme (zorunlu veya isteğe bağlı)"""
+    if request.method == 'POST':
+        current_password = request.form.get('current_password', '')
+        new_password = request.form.get('new_password', '')
+        new_password_confirm = request.form.get('new_password_confirm', '')
+        
+        # Zorunlu değişiklik değilse mevcut şifreyi kontrol et
+        if not current_user.force_password_change:
+            if not current_password or not current_user.check_password(current_password):
+                flash('Mevcut şifreniz yanlış.', 'danger')
+                return render_template('auth/change_password.html')
+        
+        # Validasyon
+        if not new_password:
+            flash('Yeni şifre gerekli.', 'danger')
+            return render_template('auth/change_password.html')
+        
+        if len(new_password) < 6:
+            flash('Yeni şifre en az 6 karakter olmalı.', 'danger')
+            return render_template('auth/change_password.html')
+        
+        if new_password != new_password_confirm:
+            flash('Yeni şifreler eşleşmiyor.', 'danger')
+            return render_template('auth/change_password.html')
+        
+        # Şifreyi güncelle
+        current_user.set_password(new_password)
+        current_user.force_password_change = False
+        try:
+            db.session.commit()
+            flash('Şifreniz başarıyla değiştirildi.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Şifre değiştirilirken hata oluştu: {str(e)}', 'danger')
+            return render_template('auth/change_password.html')
+        return redirect(url_for('main.dashboard'))
+    
+    return render_template('auth/change_password.html')

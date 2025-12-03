@@ -429,6 +429,50 @@ function processAudioToText() {
     });
 }
 
+// Yüklenmiş ses dosyasını işle
+function processUploadedAudio() {
+    const audioInput = document.getElementById('audio_upload');
+    const contentTextarea = document.getElementById('prompt');
+    const processingDiv = document.getElementById('audio-processing');
+    
+    if (!audioInput.files || !audioInput.files[0]) {
+        showToast('Lütfen önce bir ses dosyası seçin!', 'danger');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('audio_upload', audioInput.files[0]);
+    
+    processingDiv.classList.remove('d-none');
+    
+    fetch('/reports/process-audio-file', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        processingDiv.classList.add('d-none');
+        if (data.success) {
+            if (contentTextarea.value.trim()) {
+                contentTextarea.value += '\n\n' + data.text;
+            } else {
+                contentTextarea.value = data.text;
+            }
+            showToast('Ses başarıyla metne dönüştürüldü!', 'success');
+            contentTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            showToast(data.message || 'Ses işlenirken hata oluştu', 'danger');
+        }
+    })
+    .catch(error => {
+        processingDiv.classList.add('d-none');
+        showToast('Ses işlenirken bir hata oluştu', 'danger');
+    });
+}
+
 // Export functions for use in other scripts
 window.RaporcuWeb = {
     copyToClipboard,

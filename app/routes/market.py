@@ -75,7 +75,12 @@ def buy_package(package_id):
             status='pending'  # ⚠️ Henüz tamamlanmadı
         )
         db.session.add(pending_transaction)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ödeme hazırlığında hata: {str(e)}', 'danger')
+            return redirect(url_for('market.packages'))
         
         current_app.logger.info(f"💾 Pending transaction created: order={order_id}, user={current_user.id}")
         
@@ -174,9 +179,12 @@ def shopier_callback():
                 status='completed'
             )
             db.session.add(transaction)
-            db.session.commit()
-            
-            flash(f'Ödeme başarılı! {package.credits} kredi hesabınıza eklendi.', 'success')
+            try:
+                db.session.commit()
+                flash(f'Ödeme başarılı! {package.credits} kredi hesabınıza eklendi.', 'success')
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Kredi eklenirken hata: {str(e)}', 'danger')
             return redirect(url_for('main.dashboard'))
         else:
             flash('Ödeme başarısız veya iptal edildi', 'warning')

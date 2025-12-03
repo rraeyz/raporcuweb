@@ -24,6 +24,7 @@ class User(UserMixin, db.Model):
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
     email_verified = db.Column(db.Boolean, default=False, nullable=False)
+    force_password_change = db.Column(db.Boolean, default=False, nullable=False)
     
     # Token'lar
     email_verification_token = db.Column(db.String(100), unique=True)

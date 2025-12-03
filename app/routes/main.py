@@ -147,9 +147,15 @@ def shopier_webhook():
         pending_tx.status = 'completed'
         pending_tx.description = pending_tx.description.replace('(ödeme bekleniyor)', '(Shopier)')
         
-        db.session.commit()
+        try:
+            db.session.commit()
+            current_app.logger.info(f"✅ Ödeme başarılı: user={user.email}, credits={credits}, order={order_id}")
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"❌ Payment commit error: {e}")
+            return '<html><body>Veritabanı hatası! Lütfen destek ile iletişime geçin.</body></html>'
         
-        current_app.logger.info(f"✅ Ödeme başarılı: user={user.email}, credits={credits}, order={order_id}")
+        
         
         # Başarı sayfası göster
         return f'''

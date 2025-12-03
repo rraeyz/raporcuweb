@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file, jsonify, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file, jsonify, current_app, abort
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from app import db
@@ -33,7 +33,11 @@ def generate_report_async(app, report_id, full_prompt, title, ai_model, username
             if error:
                 report.status = 'failed'
                 report.content = f'Hata: {error}'
-                db.session.commit()
+                try:
+                    db.session.commit()
+                except Exception as commit_error:
+                    db.session.rollback()
+                    current_app.logger.error(f'Report commit error: {commit_error}')
                 return
             
             # PDF ve Word oluştur
@@ -60,7 +64,14 @@ def generate_report_async(app, report_id, full_prompt, title, ai_model, username
             report.word_file_path = word_path if not word_error else None
             report.status = 'completed'
             
-            db.session.commit()
+            try:
+                db.session.commit()
+            except Exception as commit_error:
+                db.session.rollback()
+                current_app.logger.error(f'Report completion commit error: {commit_error}')
+                report.status = 'failed'
+                report.content = f'Database error: {str(commit_error)}'
+                db.session.commit()
             
         except Exception as e:
             try:
@@ -221,7 +232,12 @@ def create_report():
         )
         db.session.add(transaction)
         
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Veritabanı hatası: {str(e)}', 'danger')
+            return redirect(url_for('reports.list_reports'))
         
         # Arka planda rapor oluştur
         thread = threading.Thread(
@@ -281,7 +297,12 @@ def download_report(report_id):
             
             # Yeni oluşturulan dosyayı kaydet
             report.file_path = filepath
-            db.session.commit()
+            try:
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f'PDF path save error: {e}')
+                # Dosya oluşturuldu ama path kaydedilemedi, yine de indir
         
         # Dosyayı gönder
         return send_file(
@@ -325,7 +346,12 @@ def download_word(report_id):
             
             # Yeni oluşturulan dosyayı kaydet
             report.word_file_path = filepath
-            db.session.commit()
+            try:
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f'Word path save error: {e}')
+                # Dosya oluşturuldu ama path kaydedilemedi, yine de indir
         
         # Dosyayı gönder
         return send_file(
@@ -387,6 +413,28 @@ def process_audio():
             'message': f'Ses işlenirken hata oluştu: {str(e)}'
         }), 500
 
+@reports_bp.route('/process-audio-file', methods=['POST'])
+@login_required
+def process_audio_file():
+    """Yüklenmiş ses dosyasını metne çevir"""
+    try:
+        if 'audio_upload' not in request.files:
+            return jsonify({'success': False, 'message': 'Ses dosyası bulunamadı'}), 400
+        
+        audio_file = request.files['audio_upload']
+        if not audio_file or not audio_file.filename:
+            return jsonify({'success': False, 'message': 'Geçerli bir ses dosyası seçin'}), 400
+        
+        audio_processor = AudioProcessor()
+        transcription, error = audio_processor.process_audio_file(audio_file)
+        
+        if transcription:
+            return jsonify({'success': True, 'text': transcription})
+        else:
+            return jsonify({'success': False, 'message': error or 'Ses işlenemedi'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @reports_bp.route('/status/<int:report_id>')
 @login_required
 def report_status(report_id):
@@ -415,13 +463,18 @@ def delete_report(report_id):
     if report.user_id != current_user.id and not current_user.is_admin:
         abort(403)
     
-    # Dosyayı sil
+    # Dosyaları sil (PDF ve Word)
+    report_generator = ReportGenerator()
     if report.file_path:
-        report_generator = ReportGenerator()
         report_generator.delete_file(report.file_path)
+    if report.word_file_path:
+        report_generator.delete_file(report.word_file_path)
     
     db.session.delete(report)
-    db.session.commit()
-    
-    flash('Rapor başarıyla silindi.', 'success')
+    try:
+        db.session.commit()
+        flash('Rapor başarıyla silindi.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Rapor silinirken hata oluştu: {str(e)}', 'danger')
     return redirect(url_for('reports.list_reports'))

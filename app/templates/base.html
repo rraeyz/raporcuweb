@@ -20,20 +20,52 @@
     <style>
         :root {
             --primary-color: {{ settings.theme_color }} !important;
+            --bs-primary: {{ settings.theme_color }} !important;
+            --bs-primary-rgb: {{ settings.theme_color|replace('#','') }} !important;
         }
-        .navbar-dark.bg-primary {
+        .navbar-dark.bg-primary, .bg-primary {
             background-color: {{ settings.theme_color }} !important;
         }
         .btn-primary {
             background-color: {{ settings.theme_color }} !important;
             border-color: {{ settings.theme_color }} !important;
         }
-        .btn-primary:hover {
+        .btn-primary:hover, .btn-primary:focus, .btn-primary:active {
             background-color: color-mix(in srgb, {{ settings.theme_color }}, black 15%) !important;
             border-color: color-mix(in srgb, {{ settings.theme_color }}, black 15%) !important;
         }
-        .text-primary {
+        .btn-outline-primary {
             color: {{ settings.theme_color }} !important;
+            border-color: {{ settings.theme_color }} !important;
+        }
+        .btn-outline-primary:hover {
+            background-color: {{ settings.theme_color }} !important;
+            border-color: {{ settings.theme_color }} !important;
+        }
+        .text-primary, a {
+            color: {{ settings.theme_color }} !important;
+        }
+        .badge.bg-primary {
+            background-color: {{ settings.theme_color }} !important;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: {{ settings.theme_color }} !important;
+            box-shadow: 0 0 0 0.25rem color-mix(in srgb, {{ settings.theme_color }}, transparent 75%) !important;
+        }
+        .page-link {
+            color: {{ settings.theme_color }} !important;
+        }
+        .page-item.active .page-link {
+            background-color: {{ settings.theme_color }} !important;
+            border-color: {{ settings.theme_color }} !important;
+        }
+        .alert-primary {
+            background-color: color-mix(in srgb, {{ settings.theme_color }}, white 85%) !important;
+            border-color: {{ settings.theme_color }} !important;
+            color: {{ settings.theme_color }} !important;
+        }
+        .card-header.bg-primary {
+            background-color: {{ settings.theme_color }} !important;
         }
     </style>
     {% endif %}

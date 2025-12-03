@@ -44,6 +44,10 @@ def init_database():
         # Admin kullanıcı oluştur
         admin = User.query.filter_by(username='admin').first()
         if not admin:
+            import secrets
+            # Rastgele güçlü şifre oluştur (16 karakter, URL-safe)
+            random_password = secrets.token_urlsafe(16)
+            
             admin = User(
                 username='admin',
                 email='admin@raporcuai.com',
@@ -51,11 +55,21 @@ def init_database():
                 is_admin=True,
                 is_active=True,
                 email_verified=True,
-                credits=100
+                credits=100,
+                force_password_change=True  # İlk girişte şifre değiştirmesi gerekiyor
             )
-            admin.set_password('Admin123!')
+            admin.set_password(random_password)
             db.session.add(admin)
-            print("✅ Admin kullanıcı oluşturuldu (admin/Admin123!)")
+            
+            print("\n" + "="*60)
+            print("🔑 ADMIN KULLANICI OLUŞTURULDU")
+            print("="*60)
+            print(f"   Kullanıcı Adı: admin")
+            print(f"   Şifre: {random_password}")
+            print("="*60)
+            print("⚠️  BU ŞİFREYİ GÜVENLİ BİR YERE KAYDIN!")
+            print("⚠️  İlk girişte şifrenizi değiştirmeniz istenecektir.")
+            print("="*60 + "\n")
         
         # Kredi paketleri oluştur
         if CreditPackage.query.count() == 0:
@@ -106,9 +120,6 @@ def init_database():
         print("\n" + "=" * 60)
         print("✅ VERİTABANI HAZIR!")
         print("=" * 60)
-        print("\n📌 Admin Giriş Bilgileri:")
-        print("   Kullanıcı: admin")
-        print("   Şifre: Admin123!")
         print("\n📦 Varsayılan Paketler:")
         for pkg in CreditPackage.query.order_by(CreditPackage.sort_order).all():
             print(f"   • {pkg.name}: {pkg.credits} kredi - {pkg.price} TL")

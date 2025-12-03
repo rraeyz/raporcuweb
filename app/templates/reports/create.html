@@ -106,16 +106,18 @@
                             
                             <!-- Dosya yükleme bölümü -->
                             <div id="upload-section" class="d-none">
-                                <input type="file" class="form-control" id="audio_upload" name="audio_upload" 
-                                       accept=".mp3,.wav,.m4a,.ogg,.webm" onchange="handleAudioUpload(this)">
-                                <div class="form-text">
-                                    <i class="fas fa-info-circle"></i> MP3, WAV, M4A, OGG veya WEBM formatında ses dosyası yükleyebilirsiniz.
-                                </div>
-                                <div id="audio-info" class="mt-2 alert alert-success d-none">
-                                    <i class="fas fa-file-audio"></i> <span id="audio-name"></span>
-                                    <button type="button" class="btn btn-sm btn-danger float-end" onclick="clearAudio()">
-                                        <i class="fas fa-times"></i> Kaldır
+                                <div class="input-group">
+                                    <input type="file" class="form-control" id="audio_upload" name="audio_upload" 
+                                           accept=".mp3,.wav,.m4a,.ogg,.webm">
+                                    <button type="button" class="btn btn-primary" onclick="processUploadedAudio()">
+                                        <i class="fas fa-cog"></i> İşle
                                     </button>
+                                </div>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle"></i> MP3, WAV, M4A, OGG veya WEBM formatında ses dosyası yükleyip İşle butonuna tıklayın.
+                                </div>
+                                <div id="audio-processing" class="mt-2 alert alert-info d-none">
+                                    <i class="fas fa-spinner fa-spin"></i> Ses dosyası işleniyor...
                                 </div>
                             </div>
                             

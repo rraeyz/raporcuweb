@@ -256,11 +256,10 @@ def change_password():
         new_password = request.form.get('new_password', '')
         new_password_confirm = request.form.get('new_password_confirm', '')
         
-        # Zorunlu değişiklik değilse mevcut şifreyi kontrol et
-        if not current_user.force_password_change:
-            if not current_password or not current_user.check_password(current_password):
-                flash('Mevcut şifreniz yanlış.', 'danger')
-                return render_template('auth/change_password.html')
+        # Mevcut şifreyi kontrol et
+        if not current_password or not current_user.check_password(current_password):
+            flash('Mevcut şifreniz yanlış.', 'danger')
+            return render_template('auth/change_password.html')
         
         # Validasyon
         if not new_password:
@@ -277,7 +276,6 @@ def change_password():
         
         # Şifreyi güncelle
         current_user.set_password(new_password)
-        current_user.force_password_change = False
         try:
             db.session.commit()
             flash('Şifreniz başarıyla değiştirildi.', 'success')

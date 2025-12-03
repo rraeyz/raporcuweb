@@ -16,6 +16,7 @@ def register():
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))
     
+    from app.models.settings import Settings
     settings = Settings.get_settings()
     
     if not settings.enable_registration:
@@ -174,6 +175,7 @@ def forgot_password():
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))
     
+    from app.models.settings import Settings
     settings = Settings.get_settings()
     
     if not settings.enable_password_reset:

@@ -101,6 +101,7 @@ def list_reports():
 @credits_required(min_credits=1)
 def create_report():
     """Yeni rapor oluştur"""
+    from app.models.settings import Settings
     settings = Settings.get_settings()
     credit_cost = settings.default_report_cost
     

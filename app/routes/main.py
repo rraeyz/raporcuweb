@@ -12,21 +12,16 @@ main_bp = Blueprint('main', __name__)
 @main_bp.route('/')
 def index():
     """Ana sayfa"""
-    settings = Settings.get_settings()
-    
     # Giriş sayfası duyuruları
     announcements = Announcement.get_active_announcements('login')
     
     return render_template('main/index.html', 
-                         settings=settings,
                          announcements=announcements)
 
 @main_bp.route('/dashboard')
 @login_required
 def dashboard():
     """Kullanıcı kontrol paneli"""
-    settings = Settings.get_settings()
-    
     # Dashboard duyuruları
     announcements = Announcement.get_active_announcements('dashboard')
     
@@ -45,7 +40,6 @@ def dashboard():
         .filter(Transaction.user_id == current_user.id, Transaction.transaction_type == 'usage').scalar() or 0
     
     return render_template('main/dashboard.html',
-                         settings=settings,
                          announcements=announcements,
                          recent_reports=recent_reports,
                          recent_transactions=recent_transactions,
@@ -61,26 +55,22 @@ def profile():
 @main_bp.route('/about')
 def about():
     """Hakkımızda"""
-    settings = Settings.get_settings()
-    return render_template('main/about.html', settings=settings)
+    return render_template('main/about.html')
 
 @main_bp.route('/contact')
 def contact():
     """İletişim"""
-    settings = Settings.get_settings()
-    return render_template('main/contact.html', settings=settings)
+    return render_template('main/contact.html')
 
 @main_bp.route('/pricing')
 def pricing():
     """Fiyatlandırma"""
     from app.models.credit_package import CreditPackage
     
-    settings = Settings.get_settings()
     packages = CreditPackage.query.filter_by(is_active=True)\
         .order_by(CreditPackage.sort_order).all()
     
     return render_template('main/pricing.html', 
-                         settings=settings,
                          packages=packages)
 
 @main_bp.route('/webhook/shopier', methods=['POST', 'GET'])
@@ -301,6 +291,7 @@ Headers: {dict(request.headers)}</pre>
         
         # Signature doğrulaması (güvenlik için önemli!)
         # ŞİMDİLİK DEVRE DIŞI - Test aşamasında
+        from app.models.settings import Settings
         settings = Settings.get_settings()
         if False and settings.shopier_api_secret:  # Signature kontrolü devre dışı
             # Shopier signature: base64(HMAC-SHA256(random_nr + platform_order_id + total_order_value + currency, secret))

@@ -66,6 +66,12 @@ def create_app(config_name='development'):
     app.jinja_env.filters['currency'] = format_currency
     app.jinja_env.filters['number'] = format_number
     
+    # Context processor - Tüm template'lere otomatik olarak settings geç
+    @app.context_processor
+    def inject_settings():
+        from app.models.settings import Settings
+        return dict(settings=Settings.get_settings())
+    
     # Veritabanı tablolarını oluştur
     with app.app_context():
         # TÜM modelleri import et ki db.create_all() çalışsın

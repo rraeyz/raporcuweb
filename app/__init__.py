@@ -87,7 +87,7 @@ def create_app(config_name='development'):
             PromoCode, Announcement, Settings
         )
         db.create_all()
-        init_default_data()
+        # init_default_data() çağrısını kaldırdık - migration sonrası çalışacak
     
     return app
 
@@ -98,8 +98,12 @@ def init_default_data():
     from app.models.credit_package import CreditPackage
     from werkzeug.security import generate_password_hash
     
-    # Varsayılan admin kullanıcı
-    admin = User.query.filter_by(username='admin').first()
+    try:
+        # Varsayılan admin kullanıcı
+        admin = User.query.filter_by(username='admin').first()
+    except Exception as e:
+        # Tablo henüz oluşmamış veya migration yapılmamış
+        return
     if not admin:
         import secrets
         random_password = secrets.token_urlsafe(16)

@@ -372,9 +372,27 @@ footer a:hover {
     color: var(--text-primary);
 }
 
+[data-theme="dark"] .table thead th {
+    color: var(--text-primary) !important;
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .table tbody td {
+    color: var(--text-primary) !important;
+    border-color: var(--border-color);
+}
+
 [data-theme="dark"] .table-hover tbody tr:hover {
     background-color: var(--table-hover);
     color: var(--text-primary);
+}
+
+[data-theme="dark"] .table a {
+    color: var(--primary-color) !important;
+}
+
+[data-theme="dark"] .table .text-muted {
+    color: var(--text-secondary) !important;
 }
 
 /* Dark Theme Badge Fix */
@@ -410,6 +428,22 @@ footer a:hover {
 
 [data-theme="dark"] textarea {
     color: var(--text-primary) !important;
+}
+
+/* Dark Theme Placeholder */
+[data-theme="dark"] ::placeholder {
+    color: var(--text-secondary) !important;
+    opacity: 0.7;
+}
+
+[data-theme="dark"] ::-webkit-input-placeholder {
+    color: var(--text-secondary) !important;
+    opacity: 0.7;
+}
+
+[data-theme="dark"] :-ms-input-placeholder {
+    color: var(--text-secondary) !important;
+    opacity: 0.7;
 }
 
 /* Report Content Styling */
@@ -523,6 +557,51 @@ footer a:hover {
 
 [data-theme="dark"] .btn-close {
     filter: invert(1);
+}
+
+/* Dark Theme Button Fixes */
+[data-theme="dark"] .btn-outline-primary {
+    color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+}
+
+[data-theme="dark"] .btn-outline-primary:hover {
+    background-color: var(--primary-color) !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .btn-outline-secondary {
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .btn-outline-secondary:hover {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Dark Theme Card Titles */
+[data-theme="dark"] .card-title {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .card-subtitle {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .card-text {
+    color: var(--text-primary) !important;
+}
+
+/* Dark Theme List Group */
+[data-theme="dark"] .list-group-item {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .list-group-item:hover {
+    background-color: var(--table-hover);
 }
 
 /* Audio Recording Styles */

@@ -398,6 +398,20 @@ footer a:hover {
     color: var(--text-primary);
 }
 
+/* Dark Theme Form Labels ve Text */
+[data-theme="dark"] label,
+[data-theme="dark"] .form-label {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .form-text {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] textarea {
+    color: var(--text-primary) !important;
+}
+
 /* Report Content Styling */
 .report-content {
     line-height: 1.8;

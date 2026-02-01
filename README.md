@@ -1,41 +1,73 @@
-# RaporcuWeb - Yapay Zeka Destekli Rapor Oluşturma Platformu
+# 📝 RaporcuWeb - Yapay Zeka Destekli Rapor Oluşturma Platformu
 
-RaporcuWeb, kullanıcıların yapay zeka desteğiyle hızlı ve profesyonel raporlar oluşturmasını sağlayan modern bir web uygulamasıdır.
+<div align="center">
+
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org)
+[![Flask](https://img.shields.io/badge/Flask-3.0+-green.svg)](https://flask.palletsprojects.com/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+
+</div>
+
+RaporcuWeb, kullanıcıların yapay zeka desteğiyle hızlı ve profesyonel raporlar oluşturmasını sağlayan modern bir web uygulamasıdır. OpenAI GPT-4, Anthropic Claude ve Google Gemini gibi lider AI modellerini destekler.
 
 ## 🚀 Özellikler
 
-### Kullanıcı Özellikleri
-- ✅ Kullanıcı kayıt/giriş sistemi
-- ✅ E-posta doğrulama
-- ✅ Şifre sıfırlama
-- ✅ Kredi bazlı sistem
-- ✅ AI destekli rapor oluşturma (OpenAI, Anthropic, Google)
-- ✅ PDF indirme ve yazdırma
-- ✅ Rapor geçmişi
-- ✅ İşlem geçmişi
+### 🎨 Kullanıcı Deneyimi
+- 🔐 **Güvenli Kimlik Doğrulama:** Kullanıcı kayıt/giriş sistemi
+- ✉️ **E-posta Doğrulama:** Hesap güvenliği için
+- 🔑 **Şifre Sıfırlama:** Güvenli şifre kurtarma
+- 💰 **Kredi Sistemi:** Esnek kullanım bazlı model
+- 🤖 **Multi-AI Desteği:** OpenAI, Anthropic ve Google AI entegrasyonu
+- 📄 **PDF İndirme:** Profesyonel rapor çıktıları
+- 📊 **Rapor Geçmişi:** Tüm raporlarınıza kolay erişim
+- 📈 **İşlem Takibi:** Detaylı işlem geçmişi
 
-### Market Sistemi
-- ✅ Kredi paketleri
-- ✅ Shopier ödeme entegrasyonu
-- ✅ Promosyon kodu desteği
-- ✅ Güvenli ödeme işlemleri
+### 💳 Ödeme ve Market
+- 💎 **Kredi Paketleri:** Farklı kullanım senaryoları için
+- 🛒 **Shopier Entegrasyonu:** Güvenli ödeme altyapısı
+- 🎟️ **Promosyon Kodları:** İndirim ve kampanya desteği
+- 🔒 **Güvenli İşlemler:** PCI uyumlu ödeme sistemi
 
-### Admin Paneli
-- ✅ Kullanıcı yönetimi
-- ✅ Kredi paketleri yönetimi
-- ✅ Promosyon kodu oluşturma
-- ✅ Duyuru sistemi
-- ✅ Site ayarları
-- ✅ İstatistikler ve raporlama
+### 👨‍💼 Admin Paneli
+- 👥 **Kullanıcı Yönetimi:** Tam kontrol
+- 💼 **Kredi Paketi Yönetimi:** Fiyatlandırma kontrolü
+- 🎫 **Promosyon Sistemi:** Kampanya oluşturma
+- 📢 **Duyuru Sistemi:** Kullanıcı bildirimleri
+- ⚙️ **Site Ayarları:** Merkezi konfigürasyon
+- 📊 **İstatistikler:** Detaylı raporlama ve analiz
 
-### Güvenlik
-- ✅ CSRF koruması
-- ✅ Rate limiting
-- ✅ XSS koruması
-- ✅ Güvenli şifre hashleme
-- ✅ Session yönetimi
+### 🔒 Güvenlik ve Performans
+- 🛡️ **CSRF Koruması:** Cross-site request forgery önleme
+- ⏱️ **Rate Limiting:** Kötüye kullanım engelleme
+- 🔐 **XSS Koruması:** Cross-site scripting güvenliği
+- 🔑 **Bcrypt Hashing:** Güvenli şifre hashleme
+- 📝 **Session Yönetimi:** Güvenli oturum kontrolü
 
-## 📋 Gereksinimler
+## 📋 Teknoloji Stack
+
+### Backend
+- **Framework:** Flask 3.0+
+- **Database:** SQLAlchemy (SQLite/PostgreSQL)
+- **Migration:** Flask-Migrate
+- **Authentication:** Flask-Login
+- **Email:** Flask-Mail
+- **Forms:** Flask-WTF
+
+### AI/ML
+- **OpenAI:** GPT-4, GPT-4 Turbo
+- **Anthropic:** Claude 3 Opus, Claude 3 Sonnet
+- **Google:** Gemini Pro, Gemini Flash
+
+### Frontend
+- **UI Framework:** Bootstrap 5
+- **Icons:** Font Awesome
+- **Charts:** Chart.js
+
+### Payment
+- **Gateway:** Shopier
+
+## 💻 Gereksinimler
 
 - Python 3.8+
 - PostgreSQL veya SQLite (development için)
@@ -48,6 +80,7 @@ RaporcuWeb, kullanıcıların yapay zeka desteğiyle hızlı ve profesyonel rapo
 ### 1. Projeyi Klonlayın
 
 ```bash
+git clone https://github.com/rraeyz/raporcuweb.git
 cd raporcuweb
 ```
 
@@ -286,15 +319,25 @@ Bu proje MIT lisansı altında lisanslanmıştır.
 
 ## 📧 İletişim
 
-Sorularınız için: support@raporcuweb.com
+Sorularınız için issue açabilirsiniz.
 
 ## 🙏 Teşekkürler
 
-- Flask Framework
-- Bootstrap 5
-- Font Awesome
-- OpenAI, Anthropic, Google AI
+Bu proje aşağıdaki harika açık kaynak projeler sayesinde mümkün oldu:
+
+- [Flask](https://flask.palletsprojects.com/) - Web framework
+- [Bootstrap](https://getbootstrap.com/) - UI components
+- [Font Awesome](https://fontawesome.com/) - Icons
+- [OpenAI](https://openai.com/) - GPT models
+- [Anthropic](https://www.anthropic.com/) - Claude models  
+- [Google AI](https://ai.google.dev/) - Gemini models
 
 ---
 
-**Not**: Bu proje eğitim ve ticari amaçlarla kullanılabilir. Production ortamına geçmeden önce güvenlik testlerini yapmayı unutmayın.
+<div align="center">
+
+**⭐ Bu projeyi beğendiyseniz yıldız vermeyi unutmayın!**
+
+Made with ❤️ by [rraeyz](https://github.com/rraeyz)
+
+</div>
